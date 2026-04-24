@@ -1,0 +1,66 @@
+#!/bin/sh
+# Configure script for cgvR
+# 1. Check static libraries exist in inst/lib/
+# 2. Detect Vulkan + GLFW
+# 3. Generate src/Makevars from src/Makevars.in
+
+# ---- Check static libraries ----
+
+DVZ_LIB_DIR="inst/lib"
+DVZ_INC_DIR="inst/include"
+
+for lib in libdatoviz.a libcglm.a libglfw3.a; do
+  if [ ! -f "${DVZ_LIB_DIR}/${lib}" ]; then
+    echo "ERROR: ${DVZ_LIB_DIR}/${lib} not found."
+    echo "  Build datoviz from source and copy static libraries to ${DVZ_LIB_DIR}/"
+    exit 1
+  fi
+done
+echo "* Static libraries: OK"
+
+# ---- Check headers ----
+
+if [ ! -f "${DVZ_INC_DIR}/datoviz_app.h" ]; then
+  echo "WARNING: Datoviz headers not found in ${DVZ_INC_DIR}/"
+  echo "  Compilation may fail. Copy headers from datoviz source tree."
+fi
+
+# ---- Detect Vulkan ----
+
+VULKAN_CFLAGS=""
+VULKAN_LIBS=""
+
+if pkg-config --exists vulkan 2>/dev/null; then
+  VULKAN_CFLAGS=$(pkg-config --cflags vulkan)
+  VULKAN_LIBS=$(pkg-config --libs vulkan)
+  echo "* Vulkan: found via pkg-config"
+elif [ -f /usr/lib/x86_64-linux-gnu/libvulkan.so ] || [ -f /usr/lib/libvulkan.so ]; then
+  VULKAN_LIBS="-lvulkan"
+  echo "* Vulkan: found (system libvulkan)"
+else
+  echo "ERROR: Vulkan not found. Install libvulkan-dev."
+  exit 1
+fi
+
+# ---- Detect GLFW3 (for pkg-config cflags only; linking is static) ----
+
+GLFW_CFLAGS=""
+
+if pkg-config --exists glfw3 2>/dev/null; then
+  GLFW_CFLAGS=$(pkg-config --cflags glfw3)
+  echo "* GLFW3: headers found via pkg-config"
+else
+  echo "* GLFW3: using static lib from inst/lib/"
+fi
+
+# ---- Generate src/Makevars ----
+
+sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
+    -e "s|@DVZ_LIB_DIR@|${DVZ_LIB_DIR}|g" \
+    -e "s|@VULKAN_CFLAGS@|${VULKAN_CFLAGS}|g" \
+    -e "s|@VULKAN_LIBS@|${VULKAN_LIBS}|g" \
+    -e "s|@GLFW_CFLAGS@|${GLFW_CFLAGS}|g" \
+    src/Makevars.in > src/Makevars
+
+echo "* Wrote src/Makevars"
+echo "Configuration complete."

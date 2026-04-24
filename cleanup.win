@@ -1,0 +1,6 @@
+#!/bin/sh
+# Clean compiled objects and generated files (Windows)
+
+rm -f src/*.o src/*.so src/*.dll src/*.dylib
+rm -f src/Makevars
+rm -f src/Makevars.win

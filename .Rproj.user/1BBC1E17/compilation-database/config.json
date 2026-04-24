@@ -1,0 +1,19 @@
+{
+    "args": [
+        "-I/home/yuri/R/x86_64-pc-linux-gnu-library/4.3/Rcpp/include",
+        "-DEIGEN_DONT_VECTORIZE",
+        "-I/usr/include/c++/13",
+        "-I/usr/include/x86_64-linux-gnu/c++/13",
+        "-I/usr/include/c++/13/backward",
+        "-I/usr/lib/gcc/x86_64-linux-gnu/13/include",
+        "-I/usr/local/include",
+        "-I/usr/include/x86_64-linux-gnu",
+        "-I/usr/include"
+    ],
+    "pch": "Rcpp",
+    "is_cpp": true,
+    "hash": "17741651821774353437",
+    "compiler": "3584335911170649885",
+    "rversion": "4.3.3",
+    "dbversion": 4
+}

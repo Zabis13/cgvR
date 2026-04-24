@@ -1,0 +1,95 @@
+#!/bin/sh
+# Configure script for cgvR (Windows/Rtools)
+# 1. Download prebuilt datoviz.dll from GitHub release
+# 2. Detect Vulkan SDK
+# 3. Generate src/Makevars.win
+
+DVZ_VERSION="0.3.5"
+DVZ_RELEASE_URL="https://github.com/datoviz/datoviz/releases/download/v${DVZ_VERSION}"
+
+# ---- Find R ----
+
+: ${R_HOME=$(R RHOME 2>/dev/null)}
+
+# ---- Download tool ----
+
+DOWNLOADER=""
+if command -v curl >/dev/null 2>&1; then
+  DOWNLOADER="curl"
+elif command -v wget >/dev/null 2>&1; then
+  DOWNLOADER="wget"
+fi
+
+# ---- Download prebuilt datoviz DLL ----
+
+DVZ_LIB_DIR="inst/lib"
+DVZ_DLL="${DVZ_LIB_DIR}/datoviz.dll"
+
+if [ -f "$DVZ_DLL" ] && [ -s "$DVZ_DLL" ]; then
+  echo "* datoviz.dll: already present"
+else
+  mkdir -p "$DVZ_LIB_DIR"
+
+  if [ -z "$DOWNLOADER" ]; then
+    echo "ERROR: No download tool found."
+    exit 1
+  fi
+
+  WHEEL_FILE="/tmp/datoviz-${DVZ_VERSION}-win.whl"
+  WHEEL_URL="${DVZ_RELEASE_URL}/datoviz-${DVZ_VERSION}-py3-none-win_amd64.whl"
+
+  echo "* Downloading Datoviz ${DVZ_VERSION} wheel (Windows)..."
+  if [ "$DOWNLOADER" = "curl" ]; then
+    curl -fSL --retry 3 -o "$WHEEL_FILE" "$WHEEL_URL" 2>/dev/null
+  else
+    wget -q --tries=3 -O "$WHEEL_FILE" "$WHEEL_URL" 2>/dev/null
+  fi
+
+  if [ ! -f "$WHEEL_FILE" ] || [ ! -s "$WHEEL_FILE" ]; then
+    echo "ERROR: Failed to download Datoviz wheel."
+    exit 1
+  fi
+
+  echo "* Extracting datoviz.dll..."
+  if command -v unzip >/dev/null 2>&1; then
+    unzip -o -j "$WHEEL_FILE" "datoviz/datoviz.dll" -d "$DVZ_LIB_DIR" >/dev/null 2>&1
+  fi
+
+  rm -f "$WHEEL_FILE"
+
+  if [ ! -f "$DVZ_DLL" ] || [ ! -s "$DVZ_DLL" ]; then
+    echo "ERROR: Failed to extract datoviz.dll"
+    exit 1
+  fi
+
+  echo "* datoviz.dll: extracted successfully"
+fi
+
+# ---- Datoviz headers ----
+
+DVZ_INC_DIR="inst/include"
+
+# ---- Detect Vulkan SDK ----
+
+VULKAN_CFLAGS=""
+VULKAN_LIBS=""
+
+if [ -n "$VULKAN_SDK" ] && [ -d "$VULKAN_SDK/Lib" ]; then
+  VULKAN_CFLAGS="-I\"${VULKAN_SDK}/Include\""
+  VULKAN_LIBS="-L\"${VULKAN_SDK}/Lib\" -lvulkan-1"
+  echo "* Vulkan: found (SDK: ${VULKAN_SDK})"
+else
+  echo "WARNING: VULKAN_SDK not set. Building without Vulkan may fail."
+  VULKAN_LIBS="-lvulkan-1"
+fi
+
+# ---- Generate src/Makevars.win ----
+
+sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
+    -e "s|@DVZ_LIB_DIR@|${DVZ_LIB_DIR}|g" \
+    -e "s|@VULKAN_CFLAGS@|${VULKAN_CFLAGS}|g" \
+    -e "s|@VULKAN_LIBS@|${VULKAN_LIBS}|g" \
+    src/Makevars.win.in > src/Makevars.win
+
+echo "* Wrote src/Makevars.win"
+echo "Configuration complete."
