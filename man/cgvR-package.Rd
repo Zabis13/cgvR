@@ -6,7 +6,7 @@
 \alias{cgvR-package}
 \title{cgvR: Interactive 3D Visualization of Large Cayley Graphs via Vulkan}
 \description{
-Interactive 3D visualization of very large Cayley graphs using Vulkan-based rendering via the 'Datoviz' library. Renders graph neighborhoods on the fly within a configurable visibility zone (e.g. 10 moves from current node), enabling smooth navigation over graphs too large to display entirely. Supports flying camera, dynamic node/edge rendering, path highlighting, and multiple 3D layout algorithms. Uses 'cayleyR' for graph operations and Vulkan GPU drivers from 'ggmlR' for high-performance rendering.
+Interactive 3D visualization of large Cayley graphs using Vulkan-based rendering based on 'Datoviz' library.
 }
 \seealso{
 Useful links:

@@ -48,10 +48,7 @@
 
 #define EPSILON 1e-10
 
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunused-variable"
-static uint32_t _ZERO_OFFSET[3] = {0, 0, 0};
-#pragma GCC diagnostic pop
+static uint32_t _ZERO_OFFSET[3] __attribute__((unused)) = {0, 0, 0};
 #define DVZ_ZERO_OFFSET _ZERO_OFFSET
 
 

@@ -1,0 +1,187 @@
+---
+title: "Getting started with cgvR"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with cgvR}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(eval = TRUE)
+```
+
+cgvR renders 3D graphs with a Vulkan backend. This vignette walks through the
+main APIs on small built-in examples: opening a viewer, uploading a graph,
+laying it out, controlling the camera, highlighting a path, and recording a
+short video.
+
+Code that opens a real window (`cgv_run`) is shown with `eval = FALSE` so the
+vignette builds in a headless environment. Run those chunks interactively to
+see the result.
+
+```{r}
+library(cgvR)
+```
+
+---
+
+## 1. A first graph
+
+Start with a tiny graph: 8 nodes on the corners of a cube, edges along the
+cube's edges. Positions are explicit, no layout needed.
+
+```{r}
+nodes <- 1:8
+edges <- cbind(
+  c(1,2,3,4, 5,6,7,8, 1,2,3,4),
+  c(2,3,4,1, 6,7,8,5, 5,6,7,8)
+)
+
+# corner coordinates of a unit cube, scaled
+pos <- matrix(c(
+  -1,-1,-1,   1,-1,-1,   1, 1,-1,  -1, 1,-1,
+  -1,-1, 1,   1,-1, 1,   1, 1, 1,  -1, 1, 1
+), ncol = 3, byrow = TRUE) * 5
+```
+
+```{r, eval = FALSE}
+v <- cgv_viewer(800, 600, "cube")
+cgv_background(v, "black")
+cgv_set_graph(v, nodes, edges,
+              positions   = pos,
+              node_values = as.double(seq_len(8)),
+              node_sizes  = rep(20, 8))
+cgv_camera(v, position = c(15, 12, 18), target = c(0, 0, 0))
+cgv_run(v)
+```
+
+`node_values` is mapped through a colormap (viridis by default — see `cmap` in
+`?cgv_set_graph` for plasma / inferno / magma).
+
+---
+
+## 2. Force-directed layout
+
+For graphs without natural coordinates use `cgv_layout_fr` (pure-R
+Fruchterman-Reingold) or `cgv_layout_fr_bh` (Barnes-Hut, O(n log n) in C —
+prefer it for thousands of nodes).
+
+```{r}
+set.seed(1)
+n <- 60L
+# random tree + a few extra edges
+ef <- 1L; et <- integer(0)
+for (i in 2:n) { ef <- c(ef, sample.int(i - 1, 1)); et <- c(et, i) }
+ef <- c(ef, sample.int(n, 20)); et <- c(et, sample.int(n, 20))
+edges <- cbind(ef[seq_len(min(length(ef), length(et)))],
+               et[seq_len(min(length(ef), length(et)))])
+
+pos <- cgv_layout_fr(n, edges, n_iter = 200L, seed = 42L)
+str(pos)
+```
+
+```{r, eval = FALSE}
+v <- cgv_viewer(1000, 700, "FR layout")
+cgv_set_graph(v, seq_len(n), edges,
+              positions   = pos,
+              node_values = as.double(seq_len(n)),
+              node_sizes  = rep(10, n))
+cgv_camera(v, position = c(20, 16, 24), target = c(0, 0, 0))
+cgv_run(v)
+```
+
+Same call, larger graph, faster algorithm:
+
+```{r, eval = FALSE}
+pos <- cgv_layout_fr_bh(5000L, edges_big, n_iter = 200L, seed = 1L)
+```
+
+---
+
+## 3. Highlighting a path
+
+`cgv_highlight_path` overlays a path on top of the existing graph. Pass any
+sequence of node ids; consecutive ids get a thick coloured edge between them.
+
+```{r, eval = FALSE}
+v <- cgv_viewer(1000, 700, "path demo")
+cgv_set_graph(v, seq_len(n), edges, positions = pos,
+              node_values = as.double(seq_len(n)),
+              node_sizes  = rep(8, n))
+
+cgv_highlight_path(v, c(1, 5, 17, 42), color = "#FF2200",
+                   node_scale = 2.0, edge_width = 4.0)
+
+# remove the highlight again:
+# cgv_clear_path(v)
+
+cgv_run(v)
+```
+
+---
+
+## 4. Camera control
+
+Three modes are available — `fly` (WASD + mouse), `orbit`, `arcball`. Switch at
+runtime with `cgv_camera_mode`. Two helpers animate the camera:
+
+* `cgv_fly_to(v, node_id, duration)` — fly to a single node.
+* `cgv_fly_path(v, node_ids, duration)` — animate along a Catmull-Rom spline
+  through several waypoints.
+
+```{r, eval = FALSE}
+v <- cgv_viewer(1000, 700, "camera demo")
+cgv_set_graph(v, seq_len(n), edges, positions = pos,
+              node_sizes = rep(8, n))
+
+cgv_camera_mode(v, "orbit")
+cgv_fly_path(v, c(1, 17, 42, 5, 1), duration = 6.0)
+cgv_run(v)
+```
+
+---
+
+## 5. Recording a video
+
+`cgv_record_start` / `cgv_record_stop` pipe frames to `ffmpeg` (must be on
+`PATH`). In offscreen mode you control the number of frames explicitly via
+`cgv_run(v, n_frames = ...)`, which is convenient for scripted rendering.
+
+```{r, eval = FALSE}
+v <- cgv_viewer(1280, 720, "record demo", offscreen = TRUE)
+cgv_set_graph(v, seq_len(n), edges, positions = pos,
+              node_sizes = rep(8, n))
+cgv_camera(v, position = c(20, 16, 24), target = c(0, 0, 0))
+
+cgv_record_start(v, "demo.mp4", fps = 30)
+cgv_run(v, n_frames = 90L)        # 3 seconds at 30 fps
+cgv_record_stop(v)
+```
+
+---
+
+## 6. Headless mode
+
+`offscreen = TRUE` skips the GLFW window. Useful for tests, CI, and anywhere a
+display is unavailable.
+
+```{r, eval = FALSE}
+v <- cgv_viewer(640, 480, offscreen = TRUE)
+cgv_set_graph(v, nodes, edges, positions = pos)
+cgv_run(v, n_frames = 1L)
+cgv_close(v)
+```
+
+---
+
+## Where to next
+
+The `inst/examples/` directory ships ready-to-run scripts:
+
+* `demo_small_graph.R` — random 100-node graph with FR layout.
+* `demo_cycles_bh.R` — TopSpin cycles with Barnes-Hut FR.
+* `demo_tictactoe.R` — Tic-Tac-Toe state graph; node colour = move number.
+* `demo_record.R`, `demo_cycles_bh_record.R` — video recording end-to-end.
+
+Run them with `Rscript inst/examples/<file>.R` from the package root.

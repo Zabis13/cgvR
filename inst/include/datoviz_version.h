@@ -37,7 +37,7 @@
 
 
 
-#define DVZ_NAME       "Datoviz"
+#define DVZ_NAME       "cgvR"
 #define DVZ_MAINTAINER "Cyrille Rossant <cyrille.rossant at gmail.com>"
 
 

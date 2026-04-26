@@ -4,7 +4,7 @@
 \alias{cgv_viewer}
 \title{Create a 3D Cayley Graph Viewer}
 \usage{
-cgv_viewer(width = 1280L, height = 720L, title = "cgvR")
+cgv_viewer(width = 1280L, height = 720L, title = "cgvR", offscreen = FALSE)
 }
 \arguments{
 \item{width}{Window width in pixels.}
@@ -12,6 +12,10 @@ cgv_viewer(width = 1280L, height = 720L, title = "cgvR")
 \item{height}{Window height in pixels.}
 
 \item{title}{Window title.}
+
+\item{offscreen}{If \code{TRUE}, creates the viewer without a window
+surface (headless mode). Useful for automated tests and CI where no
+display is available.}
 }
 \value{
 An external pointer to the viewer object (invisibly).

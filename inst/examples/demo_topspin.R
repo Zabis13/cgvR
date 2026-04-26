@@ -61,33 +61,15 @@ edges_from <- edges_from[!dup]
 edges_to   <- edges_to[!dup]
 cat(sprintf("Unique edges: %d\n", length(edges_from)))
 
-# ── 3D раскладка: радиальная по слоям BFS ────────────
-set.seed(1)
-pos <- matrix(0, nrow = n, ncol = 3)
-
-for (d in 0:max_d) {
-  idx <- which(depths == d)
-  nd <- length(idx)
-  if (d == 0) {
-    pos[idx, ] <- 0
-    next
-  }
-  # Радиус растёт с глубиной
-  r <- d * 2.0
-  # Равномерно по сфере на этом уровне + шум
-  phi   <- seq(0, 2 * pi, length.out = nd + 1)[-(nd + 1)] + runif(nd, -0.3, 0.3)
-  theta <- acos(seq(-0.8, 0.8, length.out = nd)) + runif(nd, -0.1, 0.1)
-
-  pos[idx, 1] <- r * sin(theta) * cos(phi)
-  pos[idx, 2] <- d * 1.5 + runif(nd, -0.5, 0.5)   # вертикаль ~ глубина
-  pos[idx, 3] <- r * sin(theta) * sin(phi)
-}
+# ── 3D раскладка: Fruchterman-Reingold (рёбра ≈ равной длины) ──
+edges_mat <- cbind(edges_from, edges_to)
+pos <- cgv_layout_fr(n, edges_mat, n_iter = 300L, seed = 1L, verbose = TRUE)
 
 # ── Размеры: крупнее у корня ──────────────────────────
 sizes <- pmax(4, 18 - depths * 1.2)
 
 # ── Визуализация ──────────────────────────────────────
-edges <- cbind(edges_from, edges_to)
+edges <- edges_mat
 
 v <- cgv_viewer(1280, 720, sprintf("TopSpin(%d,%d) Cayley Graph", 6, k))
 cgv_set_graph(v, seq_len(n), edges,

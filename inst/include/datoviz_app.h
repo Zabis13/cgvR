@@ -69,6 +69,17 @@ DVZ_EXPORT DvzBatch* dvz_app_batch(DvzApp* app);
 
 
 /**
+ * Return the renderer associated with the app (works in both offscreen and
+ * windowed modes).
+ *
+ * @param app the app
+ * @returns the renderer, or NULL if not yet initialised
+ */
+DVZ_EXPORT DvzRenderer* dvz_app_renderer(DvzApp* app);
+
+
+
+/**
  * Run one frame.
  *
  * @param app the app

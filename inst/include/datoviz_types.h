@@ -83,6 +83,7 @@ typedef union DvzRequestContent DvzRequestContent;
 
 typedef struct DvzRequester DvzRequester;
 typedef struct DvzBatch DvzBatch;
+typedef struct DvzRenderer DvzRenderer;
 
 // Qt.
 typedef struct DvzQtApp DvzQtApp;

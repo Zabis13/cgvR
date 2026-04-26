@@ -85,10 +85,13 @@ fi
 
 # ---- Generate src/Makevars.win ----
 
+CGLM_CFLAGS="-I\$(R_PACKAGE_SOURCE)/${DVZ_INC_DIR}"
+
 sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
     -e "s|@DVZ_LIB_DIR@|${DVZ_LIB_DIR}|g" \
     -e "s|@VULKAN_CFLAGS@|${VULKAN_CFLAGS}|g" \
     -e "s|@VULKAN_LIBS@|${VULKAN_LIBS}|g" \
+    -e "s|@CGLM_CFLAGS@|${CGLM_CFLAGS}|g" \
     src/Makevars.win.in > src/Makevars.win
 
 echo "* Wrote src/Makevars.win"

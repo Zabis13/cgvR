@@ -1,6 +1,14 @@
-#!/bin/sh
-# Clean compiled objects and generated files (Windows)
+@echo off
+REM Cleanup script for cgvR package (Windows)
+REM Removes compiled objects, shared libraries, and generated files
 
-rm -f src/*.o src/*.so src/*.dll src/*.dylib
-rm -f src/Makevars
-rm -f src/Makevars.win
+del /Q src\*.o src\*.so src\*.dll src\*.dylib 2>NUL
+
+del /Q src\datoviz\*.o 2>NUL
+del /Q src\datoviz\scene\*.o 2>NUL
+del /Q src\datoviz\scene\visuals\*.o 2>NUL
+del /Q src\datoviz\imgui\*.o 2>NUL
+del /Q src\datoviz\imgui\backends\*.o 2>NUL
+
+del /Q src\Makevars 2>NUL
+del /Q src\Makevars.win 2>NUL

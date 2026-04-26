@@ -1,8 +1,16 @@
 #!/bin/sh
-# Clean compiled objects and generated files
+
+# Cleanup script for cgvR package
+# Removes compiled objects, shared libraries, and generated files
 
 rm -f src/*.o src/*.so src/*.dll src/*.dylib
 
-# Remove generated Makevars (recreated by configure)
+rm -f src/datoviz/*.o
+rm -f src/datoviz/scene/*.o
+rm -f src/datoviz/scene/visuals/*.o
+rm -f src/datoviz/imgui/*.o
+rm -f src/datoviz/imgui/backends/*.o
+rm -f src/b64/*.o
+
 rm -f src/Makevars
 rm -f src/Makevars.win

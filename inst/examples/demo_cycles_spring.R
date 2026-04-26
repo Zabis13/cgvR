@@ -69,46 +69,12 @@ n_edges <- length(edges_from)
 cat(sprintf("Graph: %d nodes, %d edges\n", n_nodes, n_edges))
 
 # ── 3D Spring Layout (Fruchterman-Reingold) ──────────────
-set.seed(1)
-pos <- matrix(rnorm(n_nodes * 3), ncol = 3)
-
-ideal_len <- (n_nodes ^ (1/3)) * 0.8
-n_iter <- 300
-temp <- ideal_len * 2
-
-for (iter in seq_len(n_iter)) {
-  disp <- matrix(0, nrow = n_nodes, ncol = 3)
-  for (i in seq_len(n_nodes)) {
-    delta <- sweep(pos, 2, pos[i, ])
-    dist <- sqrt(rowSums(delta^2))
-    dist[i] <- 1
-    force <- -ideal_len^2 / dist^2
-    disp[i, ] <- colSums(delta * force / dist)
-  }
-  for (e in seq_len(n_edges)) {
-    a <- edges_from[e]; b <- edges_to[e]
-    delta <- pos[b, ] - pos[a, ]
-    d <- max(sqrt(sum(delta^2)), 0.01)
-    f <- d / ideal_len
-    disp[a, ] <- disp[a, ] + delta / d * f
-    disp[b, ] <- disp[b, ] - delta / d * f
-  }
-  dl <- sqrt(rowSums(disp^2))
-  dl[dl < 0.001] <- 0.001
-  pos <- pos + disp * pmin(temp, dl) / dl
-  temp <- temp * 0.98
-}
-
-pos <- sweep(pos, 2, colMeans(pos))
-
-# Нормализовать в [-15, 15] как в demo_topspin
-max_abs <- max(abs(pos))
-if (max_abs > 0) pos <- pos / max_abs * 15
-
+edges_mat <- cbind(edges_from, edges_to)
+pos <- cgv_layout_fr(n_nodes, edges_mat, n_iter = 300L, seed = 1L, verbose = TRUE)
 cat("Spring layout done.\n")
 
 # ── Визуализация ─────────────────────────────────────────
-edges <- cbind(edges_from, edges_to)
+edges <- edges_mat
 sizes <- pmax(4, 18 - seq_len(n_nodes) * 0.01)
 
 v <- cgv_viewer(1280, 720, sprintf("TopSpin(%d,%d) cycles — spring layout", n, k))

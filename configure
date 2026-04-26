@@ -1,28 +1,26 @@
 #!/bin/sh
 # Configure script for cgvR
-# 1. Check static libraries exist in inst/lib/
-# 2. Detect Vulkan + GLFW
-# 3. Generate src/Makevars from src/Makevars.in
+# 1. Detect Vulkan (required)
+# 2. Detect GLFW3 via pkg-config (required)
+# 3. cglm: header-only, bundled in inst/include/cglm/
+# 4. SIMD flags for fpng: disabled by default (CRAN policy), enabled via --with-simd
+# 5. Generate src/Makevars from src/Makevars.in
 
-# ---- Check static libraries ----
+USE_SIMD="no"
+for arg in "$@"; do
+  case "$arg" in
+    --with-simd)    USE_SIMD="yes" ;;
+    --without-simd) USE_SIMD="no"  ;;
+  esac
+done
 
-DVZ_LIB_DIR="inst/lib"
 DVZ_INC_DIR="inst/include"
 
-for lib in libdatoviz.a libcglm.a libglfw3.a; do
-  if [ ! -f "${DVZ_LIB_DIR}/${lib}" ]; then
-    echo "ERROR: ${DVZ_LIB_DIR}/${lib} not found."
-    echo "  Build datoviz from source and copy static libraries to ${DVZ_LIB_DIR}/"
-    exit 1
-  fi
-done
-echo "* Static libraries: OK"
-
-# ---- Check headers ----
+# ---- Check bundled Datoviz headers ----
 
 if [ ! -f "${DVZ_INC_DIR}/datoviz_app.h" ]; then
-  echo "WARNING: Datoviz headers not found in ${DVZ_INC_DIR}/"
-  echo "  Compilation may fail. Copy headers from datoviz source tree."
+  echo "ERROR: Datoviz headers not found in ${DVZ_INC_DIR}/"
+  exit 1
 fi
 
 # ---- Detect Vulkan ----
@@ -42,24 +40,75 @@ else
   exit 1
 fi
 
-# ---- Detect GLFW3 (for pkg-config cflags only; linking is static) ----
+# ---- Detect GLFW3 (required) ----
 
 GLFW_CFLAGS=""
+GLFW_LIBS=""
 
 if pkg-config --exists glfw3 2>/dev/null; then
   GLFW_CFLAGS=$(pkg-config --cflags glfw3)
-  echo "* GLFW3: headers found via pkg-config"
+  GLFW_LIBS=$(pkg-config --libs glfw3)
+  echo "* GLFW3: found via pkg-config"
 else
-  echo "* GLFW3: using static lib from inst/lib/"
+  echo "ERROR: GLFW3 not found via pkg-config. Install libglfw3-dev."
+  exit 1
+fi
+
+# ---- cglm: header-only, bundled ----
+
+CGLM_CFLAGS="-I\$(R_PACKAGE_SOURCE)/${DVZ_INC_DIR}"
+echo "* cglm: using bundled headers in ${DVZ_INC_DIR}/cglm/"
+
+# ---- fpng SIMD flags ----
+#
+# CRAN policy forbids non-portable compilation flags like -msse4.1, -mpclmul.
+# SIMD is disabled by default. Users who want SIMD acceleration on their own
+# machine can enable it with:
+#   install.packages("cgvR", configure.args = "--with-simd")
+
+FPNG_CFLAGS=""
+if [ "$USE_SIMD" = "yes" ]; then
+  echo "fpng SIMD: enabled by --with-simd, detecting supported flags..."
+  CC_CMD="${CC:-cc}"
+
+  check_cflag() {
+    if echo "int main(){return 0;}" | $CC_CMD $1 -x c -o /dev/null - 2>/dev/null; then
+      FPNG_CFLAGS="$FPNG_CFLAGS $1"
+      echo "  Found: $1"
+      return 0
+    fi
+    return 1
+  }
+
+  SIMD_ARCH=$(uname -m 2>/dev/null || echo "unknown")
+  case "$SIMD_ARCH" in
+    x86_64|i386|i686|amd64)
+      check_cflag -msse4.1
+      check_cflag -mpclmul
+      ;;
+    *)
+      echo "  Non-x86 architecture ($SIMD_ARCH), skipping x86 SIMD flags"
+      ;;
+  esac
+
+  if [ -z "$FPNG_CFLAGS" ]; then
+    echo "  No SIMD flags detected, fpng will use scalar fallback"
+    FPNG_CFLAGS="-DFPNG_NO_SSE=1"
+  fi
+else
+  echo "fpng SIMD: disabled (default). Use --with-simd to enable."
+  FPNG_CFLAGS="-DFPNG_NO_SSE=1"
 fi
 
 # ---- Generate src/Makevars ----
 
 sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
-    -e "s|@DVZ_LIB_DIR@|${DVZ_LIB_DIR}|g" \
     -e "s|@VULKAN_CFLAGS@|${VULKAN_CFLAGS}|g" \
     -e "s|@VULKAN_LIBS@|${VULKAN_LIBS}|g" \
     -e "s|@GLFW_CFLAGS@|${GLFW_CFLAGS}|g" \
+    -e "s|@GLFW_LIBS@|${GLFW_LIBS}|g" \
+    -e "s|@CGLM_CFLAGS@|${CGLM_CFLAGS}|g" \
+    -e "s|@FPNG_CFLAGS@|${FPNG_CFLAGS}|g" \
     src/Makevars.in > src/Makevars
 
 echo "* Wrote src/Makevars"

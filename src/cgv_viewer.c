@@ -2,6 +2,9 @@
  * cgv_viewer.c — Vulkan window via Datoviz: app, scene, figure, panel
  */
 #include "cgvR.h"
+#include "datoviz/app.h"
+#include "datoviz/renderer.h"
+#include "datoviz/board.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
@@ -40,7 +43,10 @@ SEXP C_cgv_restore_stderr(SEXP saved_fd) {
 
 static void frame_callback(DvzApp* app, DvzId window_id, DvzFrameEvent* ev) {
     CgvViewer *v = (CgvViewer*)ev->user_data;
-    if (!v || !v->fly || !v->camera) return;
+    if (!v || !v->camera) return;
+
+    /* Recording: emit frame to ffmpeg pipe if active and fps interval elapsed. */
+    cgv_record_tick(v, ev->time);
 
     CgvPathAnim *anim = &v->path_anim;
     if (!anim->active || anim->pause) return;
@@ -67,12 +73,8 @@ static void frame_callback(DvzApp* app, DvzId window_id, DvzFrameEvent* ev) {
     vec3 pos, dir;
     cgv_path_interpolate(anim, t, pos, dir);
 
-    /* Update fly camera position */
+    /* Direct camera control (no fly controller) */
     vec3 lookat = {pos[0] + dir[0], pos[1] + dir[1], pos[2] + dir[2]};
-    dvz_fly_initial_lookat(v->fly, pos, lookat);
-    dvz_fly_reset(v->fly);
-
-    /* Sync camera */
     dvz_camera_position(v->camera, pos);
     dvz_camera_lookat(v->camera, lookat);
     dvz_panel_update(v->panel);
@@ -84,6 +86,7 @@ static void viewer_finalizer(SEXP ptr) {
     CgvViewer *v = (CgvViewer *)R_ExternalPtrAddr(ptr);
     if (v) {
         int fd = suppress_stderr();
+        cgv_record_close(v);
         if (v->node_positions) { free(v->node_positions); v->node_positions = NULL; }
         if (v->node_colors)   { free(v->node_colors);   v->node_colors = NULL; }
         if (v->edge_indices)  { free(v->edge_indices);   v->edge_indices = NULL; }
@@ -97,13 +100,13 @@ static void viewer_finalizer(SEXP ptr) {
 
 /* ── Create ──────────────────────────────────────────── */
 
-SEXP C_cgv_viewer_create(SEXP width, SEXP height, SEXP title) {
+SEXP C_cgv_viewer_create(SEXP width, SEXP height, SEXP title, SEXP offscreen) {
     CgvViewer *v = Calloc(1, CgvViewer);
     v->width  = INTEGER(width)[0];
     v->height = INTEGER(height)[0];
     v->visibility_depth = 10;
     v->running = 0;
-    v->cam_mode = CGV_CAM_FLY;
+    v->cam_mode = CGV_CAM_ORBIT;
     v->node_positions = NULL;
     v->node_colors = NULL;
     v->edge_indices = NULL;
@@ -119,22 +122,31 @@ SEXP C_cgv_viewer_create(SEXP width, SEXP height, SEXP title) {
     /* Path anim defaults */
     memset(&v->path_anim, 0, sizeof(CgvPathAnim));
 
+    /* Recording defaults (all zero from Calloc, but explicit for clarity) */
+    v->rec_pipe = NULL;
+    v->rec_active = 0;
+    v->rec_buf = NULL;
+    v->rec_w = v->rec_h = 0;
+
     /* Suppress Vulkan driver stderr warnings during init */
     int fd = suppress_stderr();
 
-    v->app   = dvz_app(0);
+    int app_flags = LOGICAL(offscreen)[0] ? DVZ_APP_FLAGS_OFFSCREEN : DVZ_APP_FLAGS_NONE;
+    v->app   = dvz_app(app_flags);
     v->batch = dvz_app_batch(v->app);
 
     v->scene  = dvz_scene(v->batch);
     v->figure = dvz_figure(v->scene, (uint32_t)v->width, (uint32_t)v->height, 0);
     v->panel  = dvz_panel_default(v->figure);
 
-    /* Fly camera controller — handles WASD + mouse automatically */
-    v->fly = dvz_panel_fly(v->panel, 0);
-    dvz_fly_initial_lookat(v->fly, (vec3){0, 0, 5}, (vec3){0, 0, 0});
+    /* Arcball controller — mouse drag rotates the scene around its centre */
+    v->arcball = dvz_panel_arcball(v->panel, 0);
+    dvz_arcball_initial(v->arcball, (vec3){0, 0, 0});
 
-    /* Perspective camera (created by dvz_panel_fly internally) */
+    /* Perspective camera (model-view matrix supplied by arcball) */
     v->camera = dvz_panel_camera(v->panel, DVZ_CAMERA_FLAGS_PERSPECTIVE);
+    dvz_camera_position(v->camera, (vec3){0, 0, 5});
+    dvz_camera_lookat(v->camera, (vec3){0, 0, 0});
 
     /* Register our frame callback for path animation */
     dvz_app_on_frame(v->app, frame_callback, v);
@@ -158,6 +170,7 @@ SEXP C_cgv_viewer_close(SEXP viewer) {
     if (v) {
         v->running = 0;
         int fd = suppress_stderr();
+        cgv_record_close(v);
         if (v->node_positions) { free(v->node_positions); v->node_positions = NULL; }
         if (v->node_colors)   { free(v->node_colors);   v->node_colors = NULL; }
         if (v->edge_indices)  { free(v->edge_indices);   v->edge_indices = NULL; }
@@ -202,10 +215,35 @@ SEXP C_cgv_set_background(SEXP viewer, SEXP colors) {
 
 /* ── Run ─────────────────────────────────────────────── */
 
-SEXP C_cgv_run(SEXP viewer) {
+SEXP C_cgv_run(SEXP viewer, SEXP n_frames) {
     CgvViewer *v = get_viewer(viewer);
+    uint64_t nf = (uint64_t) asInteger(n_frames);
     v->running = 1;
-    dvz_scene_run(v->scene, v->app, 0);
+
+    /* In offscreen mode Datoviz has no event loop and never fires frame
+     * callbacks.  Drive the loop ourselves: render each frame, then call
+     * cgv_record_tick() so recording works without a display. */
+    if (v->app->host->backend == DVZ_BACKEND_OFFSCREEN && nf > 0) {
+        DvzRenderer *rd  = dvz_app_renderer(v->app);
+        DvzBatch    *bat = v->app->batch;
+
+        /* First call: let dvz_scene_run submit the initial build requests. */
+        dvz_scene_run(v->scene, v->app, 0);
+
+        DvzCanvas *canvas = dvz_renderer_canvas(rd, DVZ_ID_NONE);
+
+        for (uint64_t i = 0; i < nf; i++) {
+            if (canvas) {
+                dvz_renderer_request(rd, dvz_update_canvas(bat, canvas->obj.id));
+            }
+            /* Synthetic time: frame index in seconds (matches fps-based logic). */
+            double t = (double)i / 60.0;
+            cgv_record_tick(v, t);
+        }
+    } else {
+        dvz_scene_run(v->scene, v->app, nf);
+    }
+
     v->running = 0;
     return R_NilValue;
 }

@@ -14,8 +14,14 @@ test_that("all exported functions exist", {
   expect_true(is.function(cgv_fly_path))
   expect_true(is.function(cgv_camera_mode))
   expect_true(is.function(cgv_clear_path))
-  expect_true(is.function(cgv_gpu_available))
-  expect_true(is.function(cgv_gpu_init))
-  expect_true(is.function(cgv_gpu_status))
-  expect_true(is.function(cgv_gpu_free))
+  expect_true(is.function(cgv_background))
+})
+
+test_that("NAMESPACE exports match implementations", {
+  exported <- getNamespaceExports("cgvR")
+  cgv_exports <- grep("^cgv_", exported, value = TRUE)
+  for (fn in cgv_exports) {
+    expect_true(is.function(get(fn, envir = asNamespace("cgvR"))),
+                info = fn)
+  }
 })

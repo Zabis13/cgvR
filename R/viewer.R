@@ -5,10 +5,13 @@
 #' @param width Window width in pixels.
 #' @param height Window height in pixels.
 #' @param title Window title.
+#' @param offscreen If \code{TRUE}, creates the viewer without a window
+#'   surface (headless mode). Useful for automated tests and CI where no
+#'   display is available.
 #' @return An external pointer to the viewer object (invisibly).
 #' @export
-cgv_viewer <- function(width = 1280L, height = 720L, title = "cgvR") {
-  .Call(C_cgv_viewer_create, as.integer(width), as.integer(height), title)
+cgv_viewer <- function(width = 1280L, height = 720L, title = "cgvR", offscreen = FALSE) {
+  .Call(C_cgv_viewer_create, as.integer(width), as.integer(height), title, as.logical(offscreen))
 }
 
 #' Set Background Color
@@ -43,10 +46,14 @@ cgv_close <- function(viewer) {
 
 #' Run the Viewer Event Loop
 #'
-#' Starts the rendering loop. Blocks until the window is closed.
+#' Starts the rendering loop.
 #'
 #' @param viewer External pointer returned by \code{cgv_viewer}.
+#' @param n_frames Maximum number of frames to render. \code{0} (default) means
+#'   run until the window is closed (interactive mode). A positive value renders
+#'   exactly that many frames and returns — useful for smoke tests and scripted
+#'   rendering on machines with a display.
 #' @export
-cgv_run <- function(viewer) {
-  invisible(.Call(C_cgv_run, viewer))
+cgv_run <- function(viewer, n_frames = 0L) {
+  invisible(.Call(C_cgv_run, viewer, as.integer(n_frames)))
 }

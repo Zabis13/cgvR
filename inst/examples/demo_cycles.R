@@ -110,7 +110,7 @@ node_vals <- node_omega
 edges <- cbind(edges_from, edges_to)
 
 v <- cgv_viewer(1280, 720, "TopSpin(8,4) cycles — celestial coords")
-cgv_background(v, "white")  # светло-зелёный фон
+cgv_background(v, "black")  # светло-зелёный фон
 cgv_set_graph(v, seq_len(n_nodes), edges,
               positions  = pos,
               node_values = as.double(node_vals),

@@ -20,15 +20,8 @@ for (k in seq(1, length(extra) - 1, by = 2)) {
 }
 edges <- cbind(from, to)
 
-# 3D позиции — сфера с шумом
-phi <- runif(n, 0, 2 * pi)
-theta <- acos(runif(n, -1, 1))
-r <- 5 * runif(n)^(1/3)  # равномерно по объёму
-pos <- cbind(
-  r * sin(theta) * cos(phi),
-  r * sin(theta) * sin(phi),
-  r * cos(theta)
-)
+# 3D позиции — Fruchterman-Reingold (рёбра ≈ равной длины)
+pos <- cgv_layout_fr(n, edges, n_iter = 200L, seed = 42L)
 
 # BFS-глубина от узла 1 (простой BFS по рёбрам)
 depth <- rep(NA_integer_, n)
@@ -70,7 +63,7 @@ while (cur != 1L) {
 cgv_highlight_path(v, path, color = "#FF3300",
                    node_scale = 2.5, edge_width = 6.0)
 
-cgv_camera(v, position = c(10, 8, 12), target = c(0, 0, 0))
+cgv_camera(v, position = c(20, 16, 24), target = c(0, 0, 0))
 
 # WASD + мышь для навигации, закрыть окно для выхода
 cgv_run(v)

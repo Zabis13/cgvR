@@ -85,13 +85,26 @@ SEXP C_cgv_camera_set(SEXP viewer, SEXP position, SEXP target, SEXP up) {
     /* Stop any running animation */
     v->path_anim.active = 0;
 
-    /* Update fly controller */
-    if (v->fly) {
-        dvz_fly_initial_lookat(v->fly, pos, tgt);
-        dvz_fly_reset(v->fly);
+    /* Convert (pos - tgt) into arcball angles: model-side rotation that
+     * brings the home camera direction (0,0,distance) to the requested
+     * direction. Camera itself sits at distance from target, looking at it. */
+    float dx = pos[0] - tgt[0];
+    float dy = pos[1] - tgt[1];
+    float dz = pos[2] - tgt[2];
+    float dist = sqrtf(dx * dx + dy * dy + dz * dz);
+    if (dist < 1e-6f) dist = 5.0f;
+
+    float pitch = asinf(dy / dist);
+    float yaw   = atan2f(dx, dz);
+
+    if (v->arcball) {
+        dvz_arcball_initial(v->arcball, (vec3){pitch, yaw, 0.0f});
+        dvz_arcball_reset(v->arcball);
     }
 
-    dvz_camera_position(v->camera, pos);
+    /* Camera home: target + distance along +Z; arcball rotates from there. */
+    vec3 home = {tgt[0], tgt[1], tgt[2] + dist};
+    dvz_camera_position(v->camera, home);
     dvz_camera_lookat(v->camera, tgt);
     dvz_camera_up(v->camera, upv);
 
@@ -104,31 +117,14 @@ SEXP C_cgv_camera_set(SEXP viewer, SEXP position, SEXP target, SEXP up) {
 /* ── Camera mode switching ───────────────────────────── */
 
 SEXP C_cgv_camera_mode(SEXP viewer, SEXP mode) {
-    CgvViewer *v = get_viewer(viewer);
+    /* Arcball is the only interactive mode now; kept as a no-op stub for
+     * API compatibility. Programmatic motion still goes through cgv_camera()
+     * and the path animation in cgv_fly_to / cgv_fly_path. */
+    (void)viewer;
     const char *m = CHAR(STRING_ELT(mode, 0));
-
-    if (strcmp(m, "fly") == 0) {
-        v->cam_mode = CGV_CAM_FLY;
-    } else if (strcmp(m, "orbit") == 0) {
-        v->cam_mode = CGV_CAM_ORBIT;
-        /* Store current camera position as orbit state */
-        if (v->camera) {
-            vec3 pos, look;
-            dvz_camera_get_position(v->camera, pos);
-            dvz_camera_get_lookat(v->camera, look);
-            memcpy(v->orbit_target, look, sizeof(vec3));
-            float dx = pos[0] - look[0];
-            float dy = pos[1] - look[1];
-            float dz = pos[2] - look[2];
-            v->orbit_distance = sqrtf(dx*dx + dy*dy + dz*dz);
-            if (v->orbit_distance < 0.1f) v->orbit_distance = 5.0f;
-            v->orbit_yaw = atan2f(dx, dz);
-            v->orbit_pitch = asinf(dy / v->orbit_distance);
-        }
-    } else {
-        Rf_warning("cgvR: unknown camera mode '%s', use 'fly' or 'orbit'", m);
+    if (strcmp(m, "fly") != 0 && strcmp(m, "orbit") != 0) {
+        Rf_warning("cgvR: unknown camera mode '%s'", m);
     }
-
     return R_NilValue;
 }
 

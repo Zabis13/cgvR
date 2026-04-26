@@ -4,11 +4,16 @@
 \alias{cgv_run}
 \title{Run the Viewer Event Loop}
 \usage{
-cgv_run(viewer)
+cgv_run(viewer, n_frames = 0L)
 }
 \arguments{
 \item{viewer}{External pointer returned by \code{cgv_viewer}.}
+
+\item{n_frames}{Maximum number of frames to render. \code{0} (default) means
+run until the window is closed (interactive mode). A positive value renders
+exactly that many frames and returns — useful for smoke tests and scripted
+rendering on machines with a display.}
 }
 \description{
-Starts the rendering loop. Blocks until the window is closed.
+Starts the rendering loop.
 }

@@ -1,43 +1,49 @@
 # cgvR
 
-Interactive 3D visualization of very large Cayley graphs via Vulkan.
+Interactive 3D visualization of large Cayley and state-space graphs via Vulkan.
 
 ## Overview
 
-Cayley graphs of permutation puzzles (like TopSpin) can have millions of nodes — far too many to render at once. **cgvR** solves this by rendering only the visible neighborhood on the fly: starting from a focus node, it expands up to N hops (default 10) and draws only that subgraph in 3D using GPU-accelerated Vulkan rendering.
+Cayley graphs of permutation puzzles (TopSpin, Rubik's cube, etc.) and game
+state graphs can have millions of nodes — far too many to render at once.
+**cgvR** provides GPU-accelerated 3D rendering on top of the
+[Datoviz](https://datoviz.org) Vulkan engine, plus force-directed layout and
+camera/path animation utilities for exploring such graphs interactively.
 
 ### Key features
 
-- **Fly-through navigation** — move a 3D camera over the graph in real time
-- **Dynamic visibility zone** — only nodes within N hops of the camera focus are rendered
-- **Path highlighting** — visualize paths between nodes (e.g. puzzle solutions)
-- **Pure Vulkan rendering** — all graphics via Datoviz, no OpenGL dependency
-- **GPU compute** — layout calculations and graph operations on Vulkan via ggmlR
+- **Vulkan rendering** of nodes (points) and edges (segments), driven by Datoviz.
+- **Layout algorithms**: Fruchterman-Reingold in pure R (`cgv_layout_fr`) and
+  a Barnes-Hut O(n log n) version in C (`cgv_layout_fr_bh`) for large graphs.
+- **Camera control**: fly (WASD + mouse), orbit, arcball; `cgv_fly_to` to a
+  node and `cgv_fly_path` along a Catmull-Rom spline of waypoints.
+- **Path highlighting** with custom colors, node scale and edge width.
+- **Video recording** via ffmpeg pipe (`cgv_record_start` / `cgv_record_stop`).
+- **Headless mode** (`cgv_viewer(..., offscreen = TRUE)`) for tests and
+  scripted offline rendering.
 
 ## Dependencies
 
 | Package | Role |
 |---------|------|
-| [cayleyR](https://github.com/Zabis13/cayleyR) | Cayley graph construction, BFS, pathfinding |
-| [ggmlR](https://github.com/Zabis13/ggmlR) | Vulkan GPU backend (device init, compute) |
-| [Datoviz](https://datoviz.org) | Vulkan-based scientific visualization (vendored C sources) |
+| [cayleyR](https://github.com/Zabis13/cayleyR) | Optional — Cayley graph construction, BFS, pathfinding |
 
 ### System requirements
 
 - Vulkan SDK (`libvulkan-dev` + `glslc` on Linux)
 - GLFW3 (`libglfw3-dev` on Linux)
-- C17 compiler
+- C17 compiler, `pkg-config`, GNU make
+- `ffmpeg` on `PATH` (only for `cgv_record_*`)
 
 ## Installation
 
 ```r
-# Install dependencies first
 # install.packages("remotes")
-remotes::install_github("Zabis13/cayleyR")
-remotes::install_github("Zabis13/ggmlR")
-
-# Install cgvR
 remotes::install_github("Zabis13/cgvR")
+
+# Optional: enable SIMD acceleration for fpng (PNG screenshots).
+# Disabled by default for portability. Requires SSE4.1 + PCLMUL.
+remotes::install_github("Zabis13/cgvR", configure.args = "--with-simd")
 ```
 
 ## Quick start
@@ -45,108 +51,55 @@ remotes::install_github("Zabis13/cgvR")
 ```r
 library(cgvR)
 
-# Check GPU
-cgv_gpu_status()
+# Build a small graph
+n <- 100L
+edges <- cbind(sample.int(n, 200, replace = TRUE),
+               sample.int(n, 200, replace = TRUE))
 
-# Create viewer
-v <- cgv_viewer(1280, 720, "TopSpin Cayley Graph")
+# Force-directed 3D layout
+pos <- cgv_layout_fr(n, edges, n_iter = 200L, seed = 1L)
 
-# Load graph from cayleyR
-library(cayleyR)
-# ... build graph ...
+# Open a viewer and upload the graph
+v <- cgv_viewer(1280, 720, "cgvR demo")
+cgv_background(v, "black")
+cgv_set_graph(v, 1:n, edges,
+              positions   = pos,
+              node_values = as.double(seq_len(n)),
+              node_sizes  = rep(8, n))
 
-# Set graph data (nodes, edges, optional 3D positions)
-cgv_set_graph(v, nodes, edges)
+# Highlight a path
+cgv_highlight_path(v, c(1, 5, 17, 42), color = "#FF2200",
+                   node_scale = 1.6, edge_width = 3.0)
 
-# Configure visibility depth
-cgv_set_visibility(v, depth = 10)
-
-# Set camera
-cgv_camera(v, position = c(0, 5, 20), target = c(0, 0, 0))
-
-# Highlight a solution path
-cgv_highlight_path(v, path = c(1, 42, 137, 500), color = "#FF0000")
-
-# Fly to a specific node
-cgv_fly_to(v, node_id = 42, duration = 1.5)
-
-# Run event loop (blocks until window closed)
+# Camera + run loop (right-click drag = rotate, scroll = zoom)
+cgv_camera(v, position = c(20, 16, 24), target = c(0, 0, 0))
 cgv_run(v)
 ```
+
+More examples in `inst/examples/`:
+
+- `demo_small_graph.R` — random 100-node graph with FR layout.
+- `demo_cycles_bh.R` — TopSpin cycles, Barnes-Hut FR layout.
+- `demo_tictactoe.R` — Tic-Tac-Toe game graph, color = move number.
+- `demo_record.R`, `demo_cycles_bh_record.R` — video recording.
 
 ## Architecture
 
 ```
 R API  →  .Call  →  C layer  →  Datoviz (Vulkan visuals)
-  ↕                    ↕
-cayleyR (graph ops)   ggmlR (Vulkan device, GPU compute)
+                                  ↕
+                              cayleyR (optional graph ops)
 ```
 
-## Сборка и линковка
+Datoviz, cglm and GLFW are compiled from sources bundled in `src/` and linked
+statically into `cgvR.so`. The only external runtime dependency is
+`libvulkan.so`.
 
-Datoviz линкуется **статически** (`libdatoviz.a`) — весь код Datoviz, cglm и GLFW
-встраивается прямо в `cgvR.so`. Это означает:
+### configure flags
 
-- Не нужна системная установка Datoviz
-- `devtools::test()` и `devtools::load_all()` работают без проблем
-- Единственная внешняя runtime-зависимость — `libvulkan.so` (Vulkan SDK)
-
-### Как собирается libdatoviz.a
-
-```bash
-# 1. Клонировать datoviz с submodules (data, imgui)
-git clone --recursive https://github.com/datoviz/datoviz.git datoviz-git
-cd datoviz-git
-
-# Если submodule data не скачался (SSH → HTTPS):
-git config submodule.data.url https://github.com/datoviz/data.git
-git submodule update --init --recursive
-
-# 2. Собрать с cmake (Release, PIC обязателен для .a → .so)
-mkdir build && cd build
-cmake .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-  -DDATOVIZ_WITH_CLI=OFF \
-  -DDATOVIZ_WITH_MSDF=OFF \
-  -DDATOVIZ_WITH_ZLIB=OFF \
-  -DDATOVIZ_WITH_QT=OFF \
-  -DDATOVIZ_WITH_SHADERC=OFF
-make -j$(nproc)
-
-# 3. Собрать статический архив из всех объектных файлов
-find CMakeFiles/datoviz_core.dir \
-     CMakeFiles/datoviz_requests.dir \
-     CMakeFiles/datoviz_app.dir \
-     CMakeFiles/datoviz_scene.dir \
-     CMakeFiles/datoviz_resources.dir \
-     CMakeFiles/external_sources.dir \
-     -name "*.o" > objects.txt
-ar rcs libdatoviz.a $(cat objects.txt)
-
-# 4. Скопировать в cgvR
-cp libdatoviz.a                        /path/to/cgvR/inst/lib/
-cp _deps/cglm-build/libcglm.a         /path/to/cgvR/inst/lib/
-cp _deps/glfw-build/src/libglfw3.a    /path/to/cgvR/inst/lib/
-```
-
-### Схема линковки
-
-```
-cgvR.so
-  ├── init.o, cgv_viewer.o, cgv_graph.o, cgv_camera.o, visibility.o  (наш код)
-  ├── libdatoviz.a  (--whole-archive: core + scene + app + resources + imgui)
-  ├── libcglm.a     (математика: vec3, mat4, ...)
-  ├── libglfw3.a    (окно + ввод)
-  └── -lvulkan      (системная, единственная runtime-зависимость)
-```
-
-### configure
-
-Скрипт `configure` (запускается автоматически при `R CMD INSTALL`):
-- Проверяет наличие `libdatoviz.a`, `libcglm.a`, `libglfw3.a` в `inst/lib/`
-- Определяет Vulkan через `pkg-config`
-- Генерирует `src/Makevars` из `src/Makevars.in`
+- `--with-simd` — enable SSE4.1 + PCLMUL for `fpng` (faster PNG screenshots).
+  Pass via `R CMD INSTALL --configure-args="--with-simd" .` or
+  `install.packages(..., configure.args = "--with-simd")`.
 
 ## License
 
