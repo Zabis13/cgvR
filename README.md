@@ -4,7 +4,8 @@
 
 Interactive 3D visualization of large Cayley and state-space graphs via Vulkan.
 
-<video src="https://github.com/Zabis13/cgvR/releases/download/0.1.2/cgvr_cycles.mp4" autoplay loop muted playsinline width="720"></video>
+https://github.com/Zabis13/cgvR/releases/download/0.1.2/cgvr_cycles.mp4
+
 
 ## Overview
 
