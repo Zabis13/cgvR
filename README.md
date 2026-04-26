@@ -4,10 +4,7 @@
 
 Interactive 3D visualization of large Cayley and state-space graphs via Vulkan.
 
-
-
 https://github.com/user-attachments/assets/9af70289-d865-44db-b0a0-e67269fdd120
-
 
 
 ## Overview
