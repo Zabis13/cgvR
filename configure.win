@@ -1,18 +1,70 @@
 #!/bin/sh
-# Configure script for cgvR (Windows/Rtools)
-# 1. Download prebuilt datoviz.dll from GitHub release
-# 2. Detect Vulkan SDK
-# 3. Generate src/Makevars.win
+
+# Configure script for cgvR (Windows / Rtools)
+# 1. Try to download prebuilt datoviz.dll from the Datoviz GitHub release.
+# 2. Detect Vulkan SDK via VULKAN_SDK env var.
+# 3. If anything is missing → fall back to a stub build (cgv_stub.c only)
+#    so the package remains installable on machines without a graphics SDK
+#    or without internet access.
+# 4. Generate src/Makevars.win from src/Makevars.win.in (or src/Makevars.stub).
+#
+# Flags:
+#   --with-vulkan       require Vulkan SDK + datoviz.dll, error if missing
+#   --without-vulkan    force stub build
+
+USE_VULKAN="auto"
+for arg in "$@"; do
+  case "$arg" in
+    --with-vulkan)    USE_VULKAN="yes" ;;
+    --without-vulkan) USE_VULKAN="no"  ;;
+  esac
+done
 
 DVZ_VERSION="0.3.5"
 DVZ_RELEASE_URL="https://github.com/datoviz/datoviz/releases/download/v${DVZ_VERSION}"
+DVZ_LIB_DIR="inst/lib"
+DVZ_DLL="${DVZ_LIB_DIR}/datoviz.dll"
+DVZ_INC_DIR="inst/include"
 
-# ---- Find R ----
+write_stub_makevars_win() {
+  REASON="$1"
+  echo ""
+  echo "================================================================"
+  echo "  cgvR will be installed in STUB mode"
+  echo "  Reason: $REASON"
+  echo "  Native rendering APIs will raise an error when called."
+  echo "  Pure-R helpers (cgv_layout_fr, ...) keep working."
+  echo "================================================================"
+  echo ""
+  cp src/Makevars.stub src/Makevars.win
+  mkdir -p inst
+  echo "$REASON" > inst/STUB_BUILD
+  echo "* Wrote src/Makevars.win (stub) and inst/STUB_BUILD"
+  echo "Configuration complete (stub build)."
+  exit 0
+}
+
+require_full_or_die_win() {
+  REASON="$1"
+  if [ "$USE_VULKAN" = "yes" ]; then
+    echo "ERROR: --with-vulkan requested but $REASON"
+    echo "  Install LunarG Vulkan SDK: https://vulkan.lunarg.com/sdk/home#windows"
+    echo "  Make sure the VULKAN_SDK environment variable is set."
+    exit 1
+  fi
+  write_stub_makevars_win "$REASON"
+}
+
+rm -f inst/STUB_BUILD
+
+# ---- Forced stub via --without-vulkan ----
+if [ "$USE_VULKAN" = "no" ]; then
+  write_stub_makevars_win "disabled by --without-vulkan"
+fi
 
 : ${R_HOME=$(R RHOME 2>/dev/null)}
 
-# ---- Download tool ----
-
+# ---- Pick a downloader ----
 DOWNLOADER=""
 if command -v curl >/dev/null 2>&1; then
   DOWNLOADER="curl"
@@ -20,25 +72,26 @@ elif command -v wget >/dev/null 2>&1; then
   DOWNLOADER="wget"
 fi
 
-# ---- Download prebuilt datoviz DLL ----
+# ---- Bundled Datoviz headers ----
+if [ ! -f "${DVZ_INC_DIR}/datoviz_app.h" ]; then
+  require_full_or_die_win "Datoviz headers not found in ${DVZ_INC_DIR}/"
+fi
+echo "* Datoviz headers: found in ${DVZ_INC_DIR}/"
 
-DVZ_LIB_DIR="inst/lib"
-DVZ_DLL="${DVZ_LIB_DIR}/datoviz.dll"
-
+# ---- Download / locate prebuilt datoviz.dll ----
 if [ -f "$DVZ_DLL" ] && [ -s "$DVZ_DLL" ]; then
-  echo "* datoviz.dll: already present"
+  echo "* datoviz.dll: already present in ${DVZ_LIB_DIR}/"
 else
   mkdir -p "$DVZ_LIB_DIR"
 
   if [ -z "$DOWNLOADER" ]; then
-    echo "ERROR: No download tool found."
-    exit 1
+    require_full_or_die_win "no curl/wget available to download datoviz.dll"
   fi
 
   WHEEL_FILE="/tmp/datoviz-${DVZ_VERSION}-win.whl"
   WHEEL_URL="${DVZ_RELEASE_URL}/datoviz-${DVZ_VERSION}-py3-none-win_amd64.whl"
 
-  echo "* Downloading Datoviz ${DVZ_VERSION} wheel (Windows)..."
+  echo "* Downloading Datoviz ${DVZ_VERSION} wheel..."
   if [ "$DOWNLOADER" = "curl" ]; then
     curl -fSL --retry 3 -o "$WHEEL_FILE" "$WHEEL_URL" 2>/dev/null
   else
@@ -46,8 +99,7 @@ else
   fi
 
   if [ ! -f "$WHEEL_FILE" ] || [ ! -s "$WHEEL_FILE" ]; then
-    echo "ERROR: Failed to download Datoviz wheel."
-    exit 1
+    require_full_or_die_win "failed to download Datoviz wheel (no internet?)"
   fi
 
   echo "* Extracting datoviz.dll..."
@@ -58,33 +110,25 @@ else
   rm -f "$WHEEL_FILE"
 
   if [ ! -f "$DVZ_DLL" ] || [ ! -s "$DVZ_DLL" ]; then
-    echo "ERROR: Failed to extract datoviz.dll"
-    exit 1
+    require_full_or_die_win "failed to extract datoviz.dll (unzip missing?)"
   fi
 
-  echo "* datoviz.dll: extracted successfully"
+  echo "* datoviz.dll: extracted into ${DVZ_LIB_DIR}/"
 fi
 
-# ---- Datoviz headers ----
-
-DVZ_INC_DIR="inst/include"
-
 # ---- Detect Vulkan SDK ----
-
 VULKAN_CFLAGS=""
 VULKAN_LIBS=""
 
 if [ -n "$VULKAN_SDK" ] && [ -d "$VULKAN_SDK/Lib" ]; then
   VULKAN_CFLAGS="-I\"${VULKAN_SDK}/Include\""
   VULKAN_LIBS="-L\"${VULKAN_SDK}/Lib\" -lvulkan-1"
-  echo "* Vulkan: found (SDK: ${VULKAN_SDK})"
+  echo "* Vulkan: found via VULKAN_SDK ($VULKAN_SDK)"
 else
-  echo "WARNING: VULKAN_SDK not set. Building without Vulkan may fail."
-  VULKAN_LIBS="-lvulkan-1"
+  require_full_or_die_win "VULKAN_SDK environment variable not set or missing Lib/"
 fi
 
 # ---- Generate src/Makevars.win ----
-
 CGLM_CFLAGS="-I\$(R_PACKAGE_SOURCE)/${DVZ_INC_DIR}"
 
 sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
@@ -95,4 +139,6 @@ sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
     src/Makevars.win.in > src/Makevars.win
 
 echo "* Wrote src/Makevars.win"
+echo ""
 echo "Configuration complete."
+echo "  Vulkan: ENABLED"

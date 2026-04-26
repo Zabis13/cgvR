@@ -64,6 +64,7 @@ test_that("cgv_layout_fr accepts custom init", {
 # ── Barnes-Hut variant ─────────────────────────────────
 
 test_that("cgv_layout_fr_bh returns matrix of correct shape", {
+  skip_if_stub()
   edges <- cbind(c(1, 2, 3), c(2, 3, 1))
   pos <- cgv_layout_fr_bh(3, edges, n_iter = 50L, seed = 1L)
   expect_true(is.matrix(pos))
@@ -72,6 +73,7 @@ test_that("cgv_layout_fr_bh returns matrix of correct shape", {
 })
 
 test_that("cgv_layout_fr_bh is reproducible with same seed", {
+  skip_if_stub()
   edges <- cbind(c(1, 2, 3, 4), c(2, 3, 4, 1))
   p1 <- cgv_layout_fr_bh(4, edges, n_iter = 100L, seed = 7L)
   p2 <- cgv_layout_fr_bh(4, edges, n_iter = 100L, seed = 7L)
@@ -79,6 +81,7 @@ test_that("cgv_layout_fr_bh is reproducible with same seed", {
 })
 
 test_that("cgv_layout_fr_bh equalizes edge lengths on a 4-cycle", {
+  skip_if_stub()
   edges <- cbind(c(1, 2, 3, 4), c(2, 3, 4, 1))
   pos <- cgv_layout_fr_bh(4, edges, n_iter = 500L, seed = 2L)
 
@@ -89,6 +92,7 @@ test_that("cgv_layout_fr_bh equalizes edge lengths on a 4-cycle", {
 })
 
 test_that("cgv_layout_fr_bh handles isolated nodes (no edges)", {
+  skip_if_stub()
   pos <- cgv_layout_fr_bh(5, matrix(integer(0), ncol = 2),
                           n_iter = 50L, seed = 1L)
   expect_equal(dim(pos), c(5L, 3L))
@@ -96,6 +100,7 @@ test_that("cgv_layout_fr_bh handles isolated nodes (no edges)", {
 })
 
 test_that("cgv_layout_fr_bh normalizes output into [-15, 15]", {
+  skip_if_stub()
   edges <- cbind(c(1, 2, 3, 4), c(2, 3, 4, 1))
   pos <- cgv_layout_fr_bh(4, edges, n_iter = 100L, seed = 1L, normalize = TRUE)
   expect_lte(max(abs(pos)), 15 + 1e-9)
@@ -103,6 +108,7 @@ test_that("cgv_layout_fr_bh normalizes output into [-15, 15]", {
 })
 
 test_that("cgv_layout_fr_bh handles many nodes quickly", {
+  skip_if_stub()
   # Sanity-check: 1000 nodes should run in a few seconds at most.
   set.seed(11)
   n <- 1000L

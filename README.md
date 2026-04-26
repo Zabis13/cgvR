@@ -1,6 +1,10 @@
 # cgvR
 
+[![R-hub check on the R Consortium cluster](https://github.com/r-hub2/separate-jaguar-cgvR/actions/workflows/rhub-rc.yaml/badge.svg)](https://github.com/r-hub2/separate-jaguar-cgvR/actions/workflows/rhub-rc.yaml)
+
 Interactive 3D visualization of large Cayley and state-space graphs via Vulkan.
+
+<video src="https://github.com/Zabis13/cgvR/releases/download/0.1.2/cgvr_cycles.mp4" autoplay loop muted playsinline width="720"></video>
 
 ## Overview
 
@@ -30,10 +34,66 @@ camera/path animation utilities for exploring such graphs interactively.
 
 ### System requirements
 
-- Vulkan SDK (`libvulkan-dev` + `glslc` on Linux)
-- GLFW3 (`libglfw3-dev` on Linux)
-- C17 compiler, `pkg-config`, GNU make
-- `ffmpeg` on `PATH` (only for `cgv_record_*`)
+Supported operating systems (matches Datoviz upstream):
+
+* **Linux x86_64** — Ubuntu 22.04 or later (glibc 2.34+).
+* **macOS 12 or later** — x86_64 and arm64 (Apple silicon M1–M4).
+* **Windows 10 or later** — x86_64.
+
+Vulkan support is **auto-detected** at install time. If the dependencies are
+missing, the package falls back to a stub build (see below).
+
+**Ubuntu / Debian** — to enable full rendering:
+```bash
+sudo apt install libvulkan-dev libglfw3-dev pkg-config build-essential \
+                 mesa-vulkan-drivers
+# Optional, only for cgv_record_*:
+sudo apt install ffmpeg
+```
+
+Shaders and `cglm` headers are bundled — no need for `glslc` or `cmake`.
+Tested on Ubuntu 22.04+ (matches upstream Datoviz: glibc 2.34+).
+
+**Windows** — install [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+and the [LunarG Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows).
+Make sure the `VULKAN_SDK` environment variable is set before `R CMD INSTALL`.
+Internet access during install is required — `configure.win` downloads the
+prebuilt `datoviz.dll` from GitHub releases (cached in `inst/lib/` afterwards).
+Optional: `ffmpeg.exe` on `PATH` for `cgv_record_*`.
+
+**macOS 12 or later (x86_64 and arm64)** — install dependencies via Homebrew
+plus the LunarG Vulkan SDK (which ships MoltenVK):
+```bash
+brew install glfw pkg-config
+# Then install LunarG Vulkan SDK from
+#   https://vulkan.lunarg.com/sdk/home#mac
+# and 'export VULKAN_SDK=...' before R CMD INSTALL.
+```
+configure auto-detects `Darwin` (sets `OS_MACOS=1`, links against the
+system MoltenVK loader, applies `-mmacosx-version-min=12.0`). GLFW pulls
+the required Cocoa / IOKit / CoreFoundation frameworks via its own
+`pkg-config --libs glfw3`.
+
+A working **Vulkan GPU driver** is required at runtime regardless of platform
+(Mesa / NVIDIA / AMD on Linux, vendor driver on Windows, MoltenVK on macOS).
+
+### Build options
+
+Force or skip the native build:
+```r
+install.packages("cgvR", configure.args = "--with-vulkan")     # require Vulkan; error if missing
+install.packages("cgvR", configure.args = "--without-vulkan")  # always stub build
+```
+
+Enable SIMD acceleration for `fpng` PNG screenshots (SSE4.1 + PCLMUL on x86):
+```r
+install.packages("cgvR", configure.args = "--with-simd")
+```
+
+Combine flags as needed:
+```r
+install.packages("cgvR", configure.args = "--with-vulkan --with-simd")
+```
 
 ## Installation
 
@@ -95,11 +155,13 @@ Datoviz, cglm and GLFW are compiled from sources bundled in `src/` and linked
 statically into `cgvR.so`. The only external runtime dependency is
 `libvulkan.so`.
 
-### configure flags
+### Stub build (no Vulkan)
 
-- `--with-simd` — enable SSE4.1 + PCLMUL for `fpng` (faster PNG screenshots).
-  Pass via `R CMD INSTALL --configure-args="--with-simd" .` or
-  `install.packages(..., configure.args = "--with-simd")`.
+If Vulkan or GLFW are missing at install time (or you pass `--without-vulkan`),
+cgvR falls back to a **stub build**: only a tiny C file is compiled, the
+package installs cleanly, and all rendering APIs (`cgv_viewer`, `cgv_run`, …)
+raise an informative error when called. Pure-R helpers like `cgv_layout_fr()`
+keep working. Use `cgv_is_stub_build()` to detect this mode at runtime.
 
 ## License
 

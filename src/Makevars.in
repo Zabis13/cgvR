@@ -4,15 +4,15 @@
 DVZ_INC = ../@DVZ_INC_DIR@
 
 PKG_CFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui \
-    -DHAS_GLFW=1 -DOS_LINUX=1 @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -include cgv_r_compat.h
+    -DHAS_GLFW=1 @OS_DEFINES@ @OS_EXTRA_CFLAGS@ @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -include cgv_r_compat.h
 
 PKG_CXXFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui \
-    -DHAS_GLFW=1 -DOS_LINUX=1 @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -include cgv_r_compat.h
+    -DHAS_GLFW=1 @OS_DEFINES@ @OS_EXTRA_CFLAGS@ @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -include cgv_r_compat.h
 
 PKG_LIBS = \
     @GLFW_LIBS@ \
     @VULKAN_LIBS@ \
-    -lm -ldl -lpthread -lstdc++
+    @OS_EXTRA_LIBS@
 
 # cgvR objects
 CGVR_OBJECTS = init.o cgv_viewer.o cgv_graph.o cgv_camera.o visibility.o cgv_r_io.o cgv_layout_bh.o cgv_record.o
@@ -21,7 +21,7 @@ CGVR_OBJECTS = init.o cgv_viewer.o cgv_graph.o cgv_camera.o visibility.o cgv_r_i
 # format(printf,...) attributes. Our macro redirections would mangle
 # those attribute declarations, so strip -include cgv_r_compat.h for
 # these files. They already use R APIs directly (Rprintf, Rf_error).
-CGVR_NO_COMPAT_CFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui -DHAS_GLFW=1 -DOS_LINUX=1 @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@
+CGVR_NO_COMPAT_CFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui -DHAS_GLFW=1 @OS_DEFINES@ @OS_EXTRA_CFLAGS@ @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@
 cgv_r_io.o:   PKG_CFLAGS = $(CGVR_NO_COMPAT_CFLAGS)
 init.o:       PKG_CFLAGS = $(CGVR_NO_COMPAT_CFLAGS)
 cgv_viewer.o: PKG_CFLAGS = $(CGVR_NO_COMPAT_CFLAGS)
@@ -36,7 +36,7 @@ cgv_record.o: PKG_CFLAGS = $(CGVR_NO_COMPAT_CFLAGS)
 # inside those attributes, so GCC complains about an unknown format function.
 # ImGui doesn't write to stdout/stderr at runtime, so it does not need the
 # R-safe I/O redirection — strip the -include for these objects.
-CGVR_NO_COMPAT_CXXFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui -DHAS_GLFW=1 -DOS_LINUX=1 @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -DIMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS -DIMGUI_DISABLE_FILE_FUNCTIONS '-DIMGUI_DEBUG_PRINTF(...)=((void)0)' '-DIM_ASSERT(x)=((void)0)'
+CGVR_NO_COMPAT_CXXFLAGS = -I$(DVZ_INC) -I$(DVZ_INC)/datoviz -I. -Idatoviz -Idatoviz/scene -Idatoviz/imgui -DHAS_GLFW=1 @OS_DEFINES@ @OS_EXTRA_CFLAGS@ @VULKAN_CFLAGS@ @GLFW_CFLAGS@ @CGLM_CFLAGS@ -DIMGUI_DISABLE_DEFAULT_SHELL_FUNCTIONS -DIMGUI_DISABLE_FILE_FUNCTIONS '-DIMGUI_DEBUG_PRINTF(...)=((void)0)' '-DIM_ASSERT(x)=((void)0)'
 
 # Datoviz core objects
 DVZ_CORE_OBJECTS = \

@@ -8,17 +8,16 @@ vignette: >
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval = TRUE)
+# All chunks are static: cgvR requires a Vulkan SDK to build, which is not
+# available on CRAN's check machines. Run the snippets interactively after
+# installing the package locally.
+knitr::opts_chunk$set(eval = FALSE)
 ```
 
 cgvR renders 3D graphs with a Vulkan backend. This vignette walks through the
 main APIs on small built-in examples: opening a viewer, uploading a graph,
 laying it out, controlling the camera, highlighting a path, and recording a
 short video.
-
-Code that opens a real window (`cgv_run`) is shown with `eval = FALSE` so the
-vignette builds in a headless environment. Run those chunks interactively to
-see the result.
 
 ```{r}
 library(cgvR)

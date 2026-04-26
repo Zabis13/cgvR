@@ -1,71 +1,165 @@
 #!/bin/sh
-# Configure script for cgvR
-# 1. Detect Vulkan (required)
-# 2. Detect GLFW3 via pkg-config (required)
-# 3. cglm: header-only, bundled in inst/include/cglm/
-# 4. SIMD flags for fpng: disabled by default (CRAN policy), enabled via --with-simd
-# 5. Generate src/Makevars from src/Makevars.in
 
+# Configure script for cgvR (Linux + macOS)
+# 1. Detect Vulkan + GLFW + Datoviz headers (all required for full build)
+# 2. If anything is missing → fall back to a stub build (cgv_stub.c only)
+#    so the package remains installable on machines without a graphics SDK
+#    (e.g. CRAN check farms). Native APIs raise an informative error at call
+#    time; pure-R helpers continue to work.
+# 3. SIMD flags for fpng: disabled by default (CRAN policy), enabled via --with-simd
+# 4. Generate src/Makevars from src/Makevars.in (or src/Makevars.stub)
+#
+# Flags:
+#   --with-vulkan       require Vulkan + GLFW, error if missing
+#   --without-vulkan    force stub build (skip native rendering)
+#   --with-simd         enable -msse4.1 -mpclmul for fpng (off by default)
+
+USE_VULKAN="auto"
 USE_SIMD="no"
 for arg in "$@"; do
   case "$arg" in
-    --with-simd)    USE_SIMD="yes" ;;
-    --without-simd) USE_SIMD="no"  ;;
+    --with-vulkan)    USE_VULKAN="yes"  ;;
+    --without-vulkan) USE_VULKAN="no"   ;;
+    --with-simd)      USE_SIMD="yes"    ;;
+    --without-simd)   USE_SIMD="no"     ;;
   esac
 done
 
 DVZ_INC_DIR="inst/include"
 
-# ---- Check bundled Datoviz headers ----
+# ---- Detect target OS ----
+UNAME_S=$(uname -s 2>/dev/null || echo "unknown")
+case "$UNAME_S" in
+  Linux)
+    OS_DEFINES="-DOS_LINUX=1"
+    OS_EXTRA_CFLAGS=""
+    OS_EXTRA_LIBS="-lm -ldl -lpthread -lstdc++"
+    OS_NAME="Linux"
+    ;;
+  Darwin)
+    OS_DEFINES="-DOS_MACOS=1"
+    # Match Datoviz upstream (CMAKE_OSX_DEPLOYMENT_TARGET 12).
+    OS_EXTRA_CFLAGS="-mmacosx-version-min=12.0"
+    # GLFW's pkg-config Libs.private already adds -framework Cocoa/IOKit/CoreFoundation,
+    # so we don't have to. macOS doesn't need -ldl (dlopen is in libSystem).
+    OS_EXTRA_LIBS="-lm -lpthread -lc++"
+    OS_NAME="macOS"
+    ;;
+  *)
+    OS_DEFINES="-DOS_LINUX=1"
+    OS_EXTRA_CFLAGS=""
+    OS_EXTRA_LIBS="-lm -ldl -lpthread -lstdc++"
+    OS_NAME="Unknown ($UNAME_S, treating as Linux)"
+    ;;
+esac
+echo "* Target OS: $OS_NAME"
 
-if [ ! -f "${DVZ_INC_DIR}/datoviz_app.h" ]; then
-  echo "ERROR: Datoviz headers not found in ${DVZ_INC_DIR}/"
-  exit 1
+write_stub_makevars() {
+  REASON="$1"
+  echo ""
+  echo "================================================================"
+  echo "  cgvR will be installed in STUB mode"
+  echo "  Reason: $REASON"
+  echo "  Native rendering APIs will raise an error when called."
+  echo "  Pure-R helpers (cgv_layout_fr, ...) keep working."
+  echo "  Reinstall with the missing dependency to enable full rendering."
+  echo "================================================================"
+  echo ""
+  cp src/Makevars.stub src/Makevars
+  mkdir -p inst
+  echo "$REASON" > inst/STUB_BUILD
+  echo "* Wrote src/Makevars (stub) and inst/STUB_BUILD"
+  echo "Configuration complete (stub build)."
+  exit 0
+}
+
+require_full_or_die() {
+  REASON="$1"
+  if [ "$USE_VULKAN" = "yes" ]; then
+    echo "ERROR: --with-vulkan requested but $REASON"
+    echo "  Ubuntu/Debian: sudo apt install libvulkan-dev libglfw3-dev pkg-config"
+    echo "  macOS:         brew install glfw pkg-config vulkan-loader vulkan-headers"
+    echo "                 (or install LunarG Vulkan SDK and 'export VULKAN_SDK=...')"
+    exit 1
+  fi
+  write_stub_makevars "$REASON"
+}
+
+# Make sure leftovers from a previous stub build don't shadow a fresh full build.
+rm -f inst/STUB_BUILD
+
+# ---- Forced stub via --without-vulkan ----
+if [ "$USE_VULKAN" = "no" ]; then
+  write_stub_makevars "disabled by --without-vulkan"
 fi
 
-# ---- Detect Vulkan ----
+echo "Checking for Vulkan rendering support..."
 
+# ---- Bundled Datoviz headers ----
+if [ ! -f "${DVZ_INC_DIR}/datoviz_app.h" ]; then
+  require_full_or_die "Datoviz headers not found in ${DVZ_INC_DIR}/"
+fi
+echo "* Datoviz headers: found in ${DVZ_INC_DIR}/"
+
+# ---- Detect Vulkan ----
 VULKAN_CFLAGS=""
 VULKAN_LIBS=""
 
-if pkg-config --exists vulkan 2>/dev/null; then
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists vulkan 2>/dev/null; then
   VULKAN_CFLAGS=$(pkg-config --cflags vulkan)
   VULKAN_LIBS=$(pkg-config --libs vulkan)
-  echo "* Vulkan: found via pkg-config"
+  echo "* Vulkan: found via pkg-config ($(pkg-config --modversion vulkan))"
+elif [ -n "$VULKAN_SDK" ] && [ -f "$VULKAN_SDK/macOS/include/vulkan/vulkan.h" ]; then
+  # LunarG SDK layout (older / .dmg installer)
+  VULKAN_CFLAGS="-I$VULKAN_SDK/macOS/include"
+  VULKAN_LIBS="-L$VULKAN_SDK/macOS/lib -lvulkan"
+  echo "* Vulkan: found via VULKAN_SDK/macOS ($VULKAN_SDK)"
+elif [ -n "$VULKAN_SDK" ] && [ -f "$VULKAN_SDK/include/vulkan/vulkan.h" ]; then
+  # LunarG SDK layout (newer / Linux / unified macOS)
+  VULKAN_CFLAGS="-I$VULKAN_SDK/include"
+  VULKAN_LIBS="-L$VULKAN_SDK/lib -lvulkan"
+  echo "* Vulkan: found via VULKAN_SDK ($VULKAN_SDK)"
 elif [ -f /usr/lib/x86_64-linux-gnu/libvulkan.so ] || [ -f /usr/lib/libvulkan.so ]; then
   VULKAN_LIBS="-lvulkan"
-  echo "* Vulkan: found (system libvulkan)"
+  echo "* Vulkan: found (Linux system libvulkan, no pkg-config)"
+elif [ -f /opt/homebrew/lib/libvulkan.dylib ]; then
+  # Apple Silicon Homebrew (vulkan-loader)
+  VULKAN_CFLAGS="-I/opt/homebrew/include"
+  VULKAN_LIBS="-L/opt/homebrew/lib -lvulkan"
+  echo "* Vulkan: found via Homebrew (/opt/homebrew)"
+elif [ -f /usr/local/lib/libvulkan.dylib ]; then
+  # Intel Homebrew (vulkan-loader)
+  VULKAN_CFLAGS="-I/usr/local/include"
+  VULKAN_LIBS="-L/usr/local/lib -lvulkan"
+  echo "* Vulkan: found via Homebrew (/usr/local)"
 else
-  echo "ERROR: Vulkan not found. Install libvulkan-dev."
-  exit 1
+  if [ "$OS_NAME" = "macOS" ]; then
+    require_full_or_die "Vulkan loader not found. Install LunarG Vulkan SDK and 'export VULKAN_SDK=...'"
+  else
+    require_full_or_die "Vulkan loader not found (install libvulkan-dev or set VULKAN_SDK)"
+  fi
 fi
 
-# ---- Detect GLFW3 (required) ----
-
+# ---- Detect GLFW3 ----
 GLFW_CFLAGS=""
 GLFW_LIBS=""
 
-if pkg-config --exists glfw3 2>/dev/null; then
+if command -v pkg-config >/dev/null 2>&1 && pkg-config --exists glfw3 2>/dev/null; then
   GLFW_CFLAGS=$(pkg-config --cflags glfw3)
   GLFW_LIBS=$(pkg-config --libs glfw3)
-  echo "* GLFW3: found via pkg-config"
+  echo "* GLFW3: found via pkg-config ($(pkg-config --modversion glfw3))"
 else
-  echo "ERROR: GLFW3 not found via pkg-config. Install libglfw3-dev."
-  exit 1
+  require_full_or_die "GLFW3 not found (install libglfw3-dev or 'brew install glfw')"
 fi
 
 # ---- cglm: header-only, bundled ----
-
 CGLM_CFLAGS="-I\$(R_PACKAGE_SOURCE)/${DVZ_INC_DIR}"
 echo "* cglm: using bundled headers in ${DVZ_INC_DIR}/cglm/"
 
 # ---- fpng SIMD flags ----
 #
 # CRAN policy forbids non-portable compilation flags like -msse4.1, -mpclmul.
-# SIMD is disabled by default. Users who want SIMD acceleration on their own
-# machine can enable it with:
-#   install.packages("cgvR", configure.args = "--with-simd")
-
+# SIMD is disabled by default.
 FPNG_CFLAGS=""
 if [ "$USE_SIMD" = "yes" ]; then
   echo "fpng SIMD: enabled by --with-simd, detecting supported flags..."
@@ -101,8 +195,10 @@ else
 fi
 
 # ---- Generate src/Makevars ----
-
 sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
+    -e "s|@OS_DEFINES@|${OS_DEFINES}|g" \
+    -e "s|@OS_EXTRA_CFLAGS@|${OS_EXTRA_CFLAGS}|g" \
+    -e "s|@OS_EXTRA_LIBS@|${OS_EXTRA_LIBS}|g" \
     -e "s|@VULKAN_CFLAGS@|${VULKAN_CFLAGS}|g" \
     -e "s|@VULKAN_LIBS@|${VULKAN_LIBS}|g" \
     -e "s|@GLFW_CFLAGS@|${GLFW_CFLAGS}|g" \
@@ -112,4 +208,8 @@ sed -e "s|@DVZ_INC_DIR@|${DVZ_INC_DIR}|g" \
     src/Makevars.in > src/Makevars
 
 echo "* Wrote src/Makevars"
+echo ""
 echo "Configuration complete."
+echo "  OS:     $OS_NAME"
+echo "  Vulkan: ENABLED"
+echo "  SIMD:   $([ "$USE_SIMD" = "yes" ] && echo "ENABLED ($FPNG_CFLAGS )" || echo "disabled")"

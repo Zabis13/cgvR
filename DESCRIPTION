@@ -24,10 +24,15 @@ Suggests:
 VignetteBuilder: knitr
 License: MIT + file LICENSE
 Encoding: UTF-8
-SystemRequirements: C17, GNU make, pkg-config, Vulkan (>= 1.2) SDK
-    (libvulkan-dev + glslc on Linux), GLFW3 (libglfw3-dev on Linux).
-    Optional configure flag --with-simd enables SSE4.1 + PCLMUL for faster
-    PNG screenshots (fpng); disabled by default for portability.
+SystemRequirements: C17, C++17, GNU make, pkg-config,
+    libvulkan-dev (Linux) or LunarG 'Vulkan' 'SDK' (Windows, macOS),
+    libglfw3-dev (Linux) or glfw via Homebrew (macOS).
+    Tested on Linux x86_64 (Ubuntu 22.04+ / glibc 2.34+),
+    macOS 12+ (x86_64 and arm64), Windows 10+ x86_64.
+    Without these the package installs in stub mode (no rendering).
+    Optional configure flags: --with-vulkan / --without-vulkan to force
+    or skip native build, --with-simd for SSE4.1 + PCLMUL fpng.
+    Optional ffmpeg on PATH for cgv_record_*.
 RoxygenNote: 7.3.3
 Config/testthat/edition: 3
 URL: https://github.com/Zabis13/cgvR
