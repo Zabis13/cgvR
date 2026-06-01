@@ -24,7 +24,9 @@ cgv_highlight_path(
 \item{edge_width}{Numeric: line width for path edges (default 5.0).}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: adds (or replaces)
+  the highlight overlay for the given path. Returns \code{NULL}
+  invisibly.
 }
 \description{
 Draw a highlighted path between nodes. Path nodes get a distinct color

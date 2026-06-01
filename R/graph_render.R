@@ -14,7 +14,10 @@
 #' @param node_sizes Numeric vector of length N for point sizes (default 10).
 #' @param cmap Integer colormap id (default 6 = viridis). Common values:
 #'   5 = plasma, 6 = viridis, 7 = inferno, 8 = magma.
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: uploads the node and
+#'   edge buffers to the GPU and caches node positions on the viewer for
+#'   subsequent \code{cgv_fly_to} / picking calls. Returns \code{NULL}
+#'   invisibly.
 #' @export
 cgv_set_graph <- function(viewer, nodes, edges, positions = NULL,
                           node_values = NULL, node_colors = NULL,
@@ -42,7 +45,9 @@ cgv_set_graph <- function(viewer, nodes, edges, positions = NULL,
 #' @param color Color as hex string \code{"#RRGGBB"} or \code{"#RRGGBBAA"}.
 #' @param node_scale Numeric: size multiplier for highlighted nodes (default 2.0).
 #' @param edge_width Numeric: line width for path edges (default 5.0).
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: adds (or replaces)
+#'   the highlight overlay for the given path. Returns \code{NULL}
+#'   invisibly.
 #' @export
 cgv_highlight_path <- function(viewer, path, color = "#FF0000",
                                node_scale = 2.0, edge_width = 5.0) {
@@ -56,7 +61,9 @@ cgv_highlight_path <- function(viewer, path, color = "#FF0000",
 #' Remove path highlight and restore original node colors and sizes.
 #'
 #' @param viewer External pointer returned by \code{cgv_viewer}.
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: removes the path
+#'   highlight overlay and restores original node colors and sizes.
+#'   Returns \code{NULL} invisibly.
 #' @export
 cgv_clear_path <- function(viewer) {
   invisible(.Call(C_cgv_clear_path, viewer))

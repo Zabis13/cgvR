@@ -36,7 +36,10 @@ Takes priority over \code{node_values}.}
 5 = plasma, 6 = viridis, 7 = inferno, 8 = magma.}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: uploads the node and
+  edge buffers to the GPU and caches node positions on the viewer for
+  subsequent \code{cgv_fly_to} / picking calls. Returns \code{NULL}
+  invisibly.
 }
 \description{
 Provide the full graph (or a subgraph) as adjacency data with optional

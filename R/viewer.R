@@ -22,7 +22,8 @@ cgv_viewer <- function(width = 1280L, height = 720L, title = "cgvR", offscreen =
 #' @param color A single color string (e.g. \code{"#FFFFFF"}, \code{"white"}),
 #'   or a character vector of 4 colors for corners (top-left, top-right,
 #'   bottom-left, bottom-right).
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: updates the panel's
+#'   background color on the GPU. Returns \code{NULL} invisibly.
 #' @export
 cgv_background <- function(viewer, color) {
   rgba <- grDevices::col2rgb(color, alpha = TRUE)  # 4 x length(color)
@@ -39,6 +40,9 @@ cgv_background <- function(viewer, color) {
 #' Close the Viewer
 #'
 #' @param viewer External pointer returned by \code{cgv_viewer}.
+#' @return No return value, called for side effects: releases the
+#'   underlying Vulkan application, GPU resources and (in windowed mode)
+#'   the GLFW window held by \code{viewer}. Returns \code{NULL} invisibly.
 #' @export
 cgv_close <- function(viewer) {
   invisible(.Call(C_cgv_viewer_close, viewer))
@@ -53,6 +57,10 @@ cgv_close <- function(viewer) {
 #'   run until the window is closed (interactive mode). A positive value renders
 #'   exactly that many frames and returns — useful for smoke tests and scripted
 #'   rendering on machines with a display.
+#' @return No return value, called for side effects: drives the render
+#'   loop. Blocks until the window is closed (interactive mode,
+#'   \code{n_frames = 0}) or until exactly \code{n_frames} frames have
+#'   been rendered (scripted/offscreen mode). Returns \code{NULL} invisibly.
 #' @export
 cgv_run <- function(viewer, n_frames = 0L) {
   invisible(.Call(C_cgv_run, viewer, as.integer(n_frames)))

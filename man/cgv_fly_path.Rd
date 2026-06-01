@@ -16,7 +16,9 @@ cgv_fly_path(viewer, positions, duration = 5, loop = FALSE)
 \item{loop}{Logical: loop the animation?}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: starts a Catmull-Rom
+  spline camera animation through the given waypoints. Returns
+  \code{NULL} invisibly.
 }
 \description{
 Smoothly animate the camera along a sequence of 3D waypoints

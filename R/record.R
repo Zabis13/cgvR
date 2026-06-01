@@ -23,7 +23,9 @@
 #' @param ffmpeg_args Optional extra ffmpeg flags spliced before the output
 #'   path (e.g. \code{"-c:v libvpx-vp9 -b:v 2M"}). \code{NULL} = use defaults
 #'   (libx264, yuv420p, veryfast).
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: stores the recording
+#'   parameters on the viewer; the ffmpeg pipe is opened lazily on the
+#'   first rendered frame. Returns \code{NULL} invisibly.
 #' @export
 cgv_record_start <- function(viewer, file, fps = 30L,
                              duration = NA_real_,

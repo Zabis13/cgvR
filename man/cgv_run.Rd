@@ -14,6 +14,12 @@ run until the window is closed (interactive mode). A positive value renders
 exactly that many frames and returns — useful for smoke tests and scripted
 rendering on machines with a display.}
 }
+\value{
+No return value, called for side effects: drives the render
+  loop. Blocks until the window is closed (interactive mode,
+  \code{n_frames = 0}) or until exactly \code{n_frames} frames have
+  been rendered (scripted/offscreen mode). Returns \code{NULL} invisibly.
+}
 \description{
 Starts the rendering loop.
 }

@@ -21,10 +21,8 @@
 #' @param verbose Logical. Print progress every 50 iterations.
 #' @return Numeric matrix \code{n_nodes x dim} of node coordinates.
 #' @examples
-#' \dontrun{
 #' edges <- cbind(c(1, 2, 3, 4), c(2, 3, 4, 1))
 #' pos <- cgv_layout_fr(4, edges, n_iter = 200)
-#' }
 #' @importFrom stats rnorm
 #' @export
 cgv_layout_fr <- function(n_nodes, edges,

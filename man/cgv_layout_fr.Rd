@@ -52,8 +52,6 @@ repel each other. Implements the Fruchterman-Reingold algorithm with
 linearly-cooling temperature, fully vectorized over nodes and edges.
 }
 \examples{
-\dontrun{
 edges <- cbind(c(1, 2, 3, 4), c(2, 3, 4, 1))
 pos <- cgv_layout_fr(4, edges, n_iter = 200)
-}
 }

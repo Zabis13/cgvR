@@ -6,7 +6,7 @@
 \alias{cgvR-package}
 \title{cgvR: Interactive 3D Visualization of Large Cayley Graphs via Vulkan}
 \description{
-Interactive 3D visualization of large Cayley graphs using Vulkan-based rendering based on 'Datoviz' library.
+Provides interactive 3D visualization for large-scale Cayley graphs. Specifically designed for analyzing state spaces of the 'TopSpin' puzzle. Leverages the 'Datoviz' library and Vulkan-based GPU rendering for smooth real-time exploration of large graphs and complex state transitions. Implements efficient coordinate mapping for high-dimensional permutation groups, allowing users to visualize the connectivity and structural properties of the puzzle's state space. The rendering engine provides high-performance visuals and interactive camera controls, making it suitable for mathematical analysis of group-theoretic puzzles within the R environment.
 }
 \seealso{
 Useful links:
@@ -17,7 +17,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Yuri Baramykov \email{lbsbmsu@mail.ru}
+\strong{Maintainer}: Yuri Baramykov \email{lbsbmsu@mail.ru} (\href{https://orcid.org/0009-0000-7627-4217}{ORCID})
 
 Other contributors:
 \itemize{

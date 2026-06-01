@@ -9,6 +9,11 @@ cgv_close(viewer)
 \arguments{
 \item{viewer}{External pointer returned by \code{cgv_viewer}.}
 }
+\value{
+No return value, called for side effects: releases the
+  underlying Vulkan application, GPU resources and (in windowed mode)
+  the GLFW window held by \code{viewer}. Returns \code{NULL} invisibly.
+}
 \description{
 Close the Viewer
 }

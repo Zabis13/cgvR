@@ -13,7 +13,9 @@ cgv_camera_mode(viewer, mode = c("fly", "orbit"))
 (rotate around target with Shift+drag, scroll zoom).}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: switches the active
+  camera between fly and orbit interaction modes. Returns \code{NULL}
+  invisibly.
 }
 \description{
 Switch Camera Mode

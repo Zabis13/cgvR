@@ -10,7 +10,9 @@ cgv_clear_path(viewer)
 \item{viewer}{External pointer returned by \code{cgv_viewer}.}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: removes the path
+  highlight overlay and restores original node colors and sizes.
+  Returns \code{NULL} invisibly.
 }
 \description{
 Remove path highlight and restore original node colors and sizes.

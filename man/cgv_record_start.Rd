@@ -29,7 +29,9 @@ path (e.g. \code{"-c:v libvpx-vp9 -b:v 2M"}). \code{NULL} = use defaults
 (libx264, yuv420p, veryfast).}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: stores the recording
+  parameters on the viewer; the ffmpeg pipe is opened lazily on the
+  first rendered frame. Returns \code{NULL} invisibly.
 }
 \description{
 Pipes raw RGB frames from the live canvas into \code{ffmpeg}, which

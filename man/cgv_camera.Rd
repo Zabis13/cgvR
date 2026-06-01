@@ -16,7 +16,9 @@ cgv_camera(viewer, position = c(0, 0, 5), target = c(0, 0, 0), up = c(0, 1, 0))
 \item{up}{Numeric vector of length 3 — up direction.}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: updates the camera's
+  position, look-at target and up vector on the active panel. Returns
+  \code{NULL} invisibly.
 }
 \description{
 Set Camera Position and Direction

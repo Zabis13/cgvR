@@ -12,7 +12,9 @@ cgv_set_visibility(viewer, depth = 10L)
 \item{depth}{Integer number of hops (default 10).}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: updates the
+  visibility depth used to filter rendered nodes by BFS distance.
+  Returns \code{NULL} invisibly.
 }
 \description{
 Controls how many hops from the current focus node are rendered.

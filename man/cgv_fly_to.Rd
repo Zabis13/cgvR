@@ -14,7 +14,8 @@ cgv_fly_to(viewer, node_id, duration = 1)
 \item{duration}{Animation duration in seconds.}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: starts a camera
+  animation toward the chosen node. Returns \code{NULL} invisibly.
 }
 \description{
 Smoothly animate the camera to center on a given node.

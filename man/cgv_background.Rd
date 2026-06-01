@@ -14,7 +14,8 @@ or a character vector of 4 colors for corners (top-left, top-right,
 bottom-left, bottom-right).}
 }
 \value{
-Invisible \code{NULL}.
+No return value, called for side effects: updates the panel's
+  background color on the GPU. Returns \code{NULL} invisibly.
 }
 \description{
 Set the panel background to a solid color or a 4-corner gradient.

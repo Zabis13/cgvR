@@ -4,7 +4,9 @@
 #' @param position Numeric vector of length 3 (x, y, z).
 #' @param target Numeric vector of length 3 — look-at point.
 #' @param up Numeric vector of length 3 — up direction.
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: updates the camera's
+#'   position, look-at target and up vector on the active panel. Returns
+#'   \code{NULL} invisibly.
 #' @export
 cgv_camera <- function(viewer, position = c(0, 0, 5),
                        target = c(0, 0, 0), up = c(0, 1, 0)) {
@@ -17,7 +19,9 @@ cgv_camera <- function(viewer, position = c(0, 0, 5),
 #' @param viewer External pointer returned by \code{cgv_viewer}.
 #' @param mode Character: \code{"fly"} (WASD + mouse) or \code{"orbit"}
 #'   (rotate around target with Shift+drag, scroll zoom).
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: switches the active
+#'   camera between fly and orbit interaction modes. Returns \code{NULL}
+#'   invisibly.
 #' @export
 cgv_camera_mode <- function(viewer, mode = c("fly", "orbit")) {
   mode <- match.arg(mode)
@@ -32,7 +36,8 @@ cgv_camera_mode <- function(viewer, mode = c("fly", "orbit")) {
 #' @param viewer External pointer returned by \code{cgv_viewer}.
 #' @param node_id Integer node identifier (1-based R index).
 #' @param duration Animation duration in seconds.
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: starts a camera
+#'   animation toward the chosen node. Returns \code{NULL} invisibly.
 #' @export
 cgv_fly_to <- function(viewer, node_id, duration = 1.0) {
   invisible(.Call(C_cgv_fly_to, viewer,
@@ -48,7 +53,9 @@ cgv_fly_to <- function(viewer, node_id, duration = 1.0) {
 #' @param positions Numeric matrix with 3 columns (x, y, z), one row per waypoint.
 #' @param duration Total animation duration in seconds.
 #' @param loop Logical: loop the animation?
-#' @return Invisible \code{NULL}.
+#' @return No return value, called for side effects: starts a Catmull-Rom
+#'   spline camera animation through the given waypoints. Returns
+#'   \code{NULL} invisibly.
 #' @export
 cgv_fly_path <- function(viewer, positions, duration = 5.0, loop = FALSE) {
   positions <- as.matrix(positions)
