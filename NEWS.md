@@ -1,3 +1,9 @@
+# cgvR 0.1.2.1
+
+* e-mail update
+
+---
+
 # cgvR 0.1.2
 
 - `cgv_layout_fr()` — Fruchterman-Reingold layout in 2D/3D (pure R).

@@ -10,6 +10,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_cgv_run",              (DL_FUNC) &C_cgv_run,              2},
     {"C_cgv_set_graph",        (DL_FUNC) &C_cgv_set_graph,        8},
     {"C_cgv_highlight_path",   (DL_FUNC) &C_cgv_highlight_path,   5},
+    {"C_cgv_set_edge_colors",  (DL_FUNC) &C_cgv_set_edge_colors,  2},
     {"C_cgv_clear_path",       (DL_FUNC) &C_cgv_clear_path,       1},
     {"C_cgv_set_visibility",   (DL_FUNC) &C_cgv_set_visibility,   2},
     {"C_cgv_camera_set",       (DL_FUNC) &C_cgv_camera_set,       4},

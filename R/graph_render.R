@@ -34,6 +34,24 @@ cgv_set_graph <- function(viewer, nodes, edges, positions = NULL,
                   node_values, node_colors, node_sizes, cmap))
 }
 
+#' Set Edge Colors
+#'
+#' Override the colors of the graph edges uploaded by \code{cgv_set_graph}
+#' (by default each edge takes the average color of its two endpoints).
+#'
+#' @param viewer External pointer returned by \code{cgv_viewer}.
+#' @param colors Integer matrix with one row per edge, in the same order as
+#'   the \code{edges} passed to \code{cgv_set_graph}, and 4 columns (RGBA 0-255).
+#' @return No return value, called for side effects: uploads the edge colors
+#'   to the GPU. Returns \code{NULL} invisibly.
+#' @export
+cgv_set_edge_colors <- function(viewer, colors) {
+  colors <- as.matrix(colors)
+  if (ncol(colors) != 4L) stop("colors must have 4 columns (RGBA)")
+  storage.mode(colors) <- "integer"
+  invisible(.Call(C_cgv_set_edge_colors, viewer, colors))
+}
+
 #' Highlight a Path
 #'
 #' Draw a highlighted path between nodes. Path nodes get a distinct color

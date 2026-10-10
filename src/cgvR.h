@@ -104,6 +104,7 @@ SEXP C_cgv_set_graph(SEXP viewer, SEXP nodes, SEXP edges, SEXP positions,
                      SEXP cmap);
 SEXP C_cgv_highlight_path(SEXP viewer, SEXP path, SEXP color,
                           SEXP node_scale, SEXP edge_width);
+SEXP C_cgv_set_edge_colors(SEXP viewer, SEXP colors);
 SEXP C_cgv_clear_path(SEXP viewer);
 SEXP C_cgv_set_visibility(SEXP viewer, SEXP depth);
 

@@ -200,6 +200,36 @@ SEXP C_cgv_set_graph(SEXP viewer, SEXP nodes, SEXP edges, SEXP positions,
 }
 
 /* ──────────────────────────────────────────────────────
+ *  C_cgv_set_edge_colors — explicit per-edge colors
+ *
+ *  colors: n_edges x 4 integer matrix (RGBA 0-255), column-major,
+ *          rows in the order edges were given to cgv_set_graph
+ * ────────────────────────────────────────────────────── */
+
+SEXP C_cgv_set_edge_colors(SEXP viewer, SEXP colors) {
+    CgvViewer *v = get_viewer(viewer);
+
+    if (!v->edge_visual || v->n_edges <= 0)
+        Rf_error("cgv_set_edge_colors: no edges, call cgv_set_graph first");
+    int n_edges = v->n_edges;
+    if (Rf_length(colors) != n_edges * 4)
+        Rf_error("cgv_set_edge_colors: expected %d x 4 color matrix", n_edges);
+
+    int *cv = INTEGER(colors);
+    DvzColor *ecol = (DvzColor *)R_alloc(n_edges, sizeof(DvzColor));
+    for (int i = 0; i < n_edges; i++) {
+        ecol[i][0] = (uint8_t)cv[i];
+        ecol[i][1] = (uint8_t)cv[i + n_edges];
+        ecol[i][2] = (uint8_t)cv[i + 2 * n_edges];
+        ecol[i][3] = (uint8_t)cv[i + 3 * n_edges];
+    }
+    dvz_segment_color(v->edge_visual, 0, (uint32_t)n_edges, ecol, 0);
+
+    dvz_app_submit(v->app);
+    return R_NilValue;
+}
+
+/* ──────────────────────────────────────────────────────
  *  C_cgv_highlight_path — highlight nodes and edges of a path
  *
  *  path:        integer vector of node IDs (1-based)

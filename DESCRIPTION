@@ -1,6 +1,6 @@
 Package: cgvR
 Title: Interactive 3D Visualization of Large Cayley Graphs via Vulkan
-Version: 0.1.2
+Version: 0.1.2.1
 Authors@R: c(
     person("Yuri", "Baramykov",
         email = "lbsbmsu@mail.ru",
