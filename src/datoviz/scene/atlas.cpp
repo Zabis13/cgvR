@@ -9,6 +9,7 @@
 
 #include <fstream>
 #include <vector>
+#include <string>
 
 #include "_macros.h"
 #include "_pointer.h"

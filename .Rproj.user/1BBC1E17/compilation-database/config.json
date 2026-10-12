@@ -10,7 +10,6 @@
         "-Idatoviz/imgui",
         "-DHAS_GLFW=1",
         "-DOS_LINUX=1",
-        "-I/mnt/Data2/DS_projects/vulkansdk-linux-x86_64-1.4.341.1/x86_64/include",
         "-I/inst/include",
         "-fpic",
         "-fstack-protector-strong",
@@ -26,7 +25,7 @@
     ],
     "pch": "",
     "is_cpp": false,
-    "hash": "178881356617916568481777219506",
+    "hash": "178881356617918278111791756193",
     "compiler": "6372117035445377015",
     "rversion": "4.3.3",
     "dbversion": 4

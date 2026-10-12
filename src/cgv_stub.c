@@ -20,46 +20,57 @@ static SEXP cgv_stub_error(void) {
     return R_NilValue; /* unreachable */
 }
 
-#define CGV_STUB(name) SEXP name() { return cgv_stub_error(); }
+/* One macro per arity, so every stub has a full prototype
+ * (-Wstrict-prototypes). Arity must match the CallEntries table below. */
+#define CGV_STUB0(name) SEXP name(void) { return cgv_stub_error(); }
+#define CGV_STUB1(name) SEXP name(SEXP a1) { \
+    (void)a1; return cgv_stub_error(); }
+#define CGV_STUB2(name) SEXP name(SEXP a1, SEXP a2) { \
+    (void)a1; (void)a2; return cgv_stub_error(); }
+#define CGV_STUB3(name) SEXP name(SEXP a1, SEXP a2, SEXP a3) { \
+    (void)a1; (void)a2; (void)a3; return cgv_stub_error(); }
+#define CGV_STUB4(name) SEXP name(SEXP a1, SEXP a2, SEXP a3, SEXP a4) { \
+    (void)a1; (void)a2; (void)a3; (void)a4; return cgv_stub_error(); }
+#define CGV_STUB5(name) SEXP name(SEXP a1, SEXP a2, SEXP a3, SEXP a4, \
+                                  SEXP a5) { \
+    (void)a1; (void)a2; (void)a3; (void)a4; (void)a5; \
+    return cgv_stub_error(); }
+#define CGV_STUB7(name) SEXP name(SEXP a1, SEXP a2, SEXP a3, SEXP a4, \
+                                  SEXP a5, SEXP a6, SEXP a7) { \
+    (void)a1; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; (void)a7; \
+    return cgv_stub_error(); }
+#define CGV_STUB8(name) SEXP name(SEXP a1, SEXP a2, SEXP a3, SEXP a4, \
+                                  SEXP a5, SEXP a6, SEXP a7, SEXP a8) { \
+    (void)a1; (void)a2; (void)a3; (void)a4; (void)a5; (void)a6; (void)a7; \
+    (void)a8; return cgv_stub_error(); }
 
-CGV_STUB(C_cgv_viewer_create)
-CGV_STUB(C_cgv_viewer_close)
-CGV_STUB(C_cgv_run)
-CGV_STUB(C_cgv_set_graph)
-CGV_STUB(C_cgv_highlight_path)
-CGV_STUB(C_cgv_clear_path)
-CGV_STUB(C_cgv_set_visibility)
-CGV_STUB(C_cgv_camera_set)
-CGV_STUB(C_cgv_camera_mode)
-CGV_STUB(C_cgv_fly_to)
-CGV_STUB(C_cgv_fly_path)
-CGV_STUB(C_cgv_set_background)
-CGV_STUB(C_cgv_layout_fr_bh)
-CGV_STUB(C_cgv_record_start)
-CGV_STUB(C_cgv_record_stop)
-CGV_STUB(C_cgv_suppress_stderr)
-CGV_STUB(C_cgv_restore_stderr)
+CGV_STUB4(C_cgv_viewer_create)
+CGV_STUB1(C_cgv_viewer_close)
+CGV_STUB2(C_cgv_run)
+CGV_STUB8(C_cgv_set_graph)
+CGV_STUB5(C_cgv_highlight_path)
+CGV_STUB1(C_cgv_clear_path)
+CGV_STUB2(C_cgv_set_edge_colors)
+CGV_STUB2(C_cgv_set_visibility)
+CGV_STUB4(C_cgv_camera_set)
+CGV_STUB2(C_cgv_camera_mode)
+CGV_STUB3(C_cgv_fly_to)
+CGV_STUB4(C_cgv_fly_path)
+CGV_STUB2(C_cgv_set_background)
+CGV_STUB7(C_cgv_layout_fr_bh)
+CGV_STUB5(C_cgv_record_start)
+CGV_STUB1(C_cgv_record_stop)
+CGV_STUB0(C_cgv_suppress_stderr)
+CGV_STUB1(C_cgv_restore_stderr)
 
-#undef CGV_STUB
-
-/* Forward declarations for the table below. */
-extern SEXP C_cgv_viewer_create();
-extern SEXP C_cgv_viewer_close();
-extern SEXP C_cgv_run();
-extern SEXP C_cgv_set_graph();
-extern SEXP C_cgv_highlight_path();
-extern SEXP C_cgv_clear_path();
-extern SEXP C_cgv_set_visibility();
-extern SEXP C_cgv_camera_set();
-extern SEXP C_cgv_camera_mode();
-extern SEXP C_cgv_fly_to();
-extern SEXP C_cgv_fly_path();
-extern SEXP C_cgv_set_background();
-extern SEXP C_cgv_layout_fr_bh();
-extern SEXP C_cgv_record_start();
-extern SEXP C_cgv_record_stop();
-extern SEXP C_cgv_suppress_stderr();
-extern SEXP C_cgv_restore_stderr();
+#undef CGV_STUB0
+#undef CGV_STUB1
+#undef CGV_STUB2
+#undef CGV_STUB3
+#undef CGV_STUB4
+#undef CGV_STUB5
+#undef CGV_STUB7
+#undef CGV_STUB8
 
 static const R_CallMethodDef CallEntries[] = {
     {"C_cgv_viewer_create",   (DL_FUNC) &C_cgv_viewer_create,   4},
@@ -68,6 +79,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"C_cgv_set_graph",       (DL_FUNC) &C_cgv_set_graph,       8},
     {"C_cgv_highlight_path",  (DL_FUNC) &C_cgv_highlight_path,  5},
     {"C_cgv_clear_path",      (DL_FUNC) &C_cgv_clear_path,      1},
+    {"C_cgv_set_edge_colors", (DL_FUNC) &C_cgv_set_edge_colors, 2},
     {"C_cgv_set_visibility",  (DL_FUNC) &C_cgv_set_visibility,  2},
     {"C_cgv_camera_set",      (DL_FUNC) &C_cgv_camera_set,      4},
     {"C_cgv_camera_mode",     (DL_FUNC) &C_cgv_camera_mode,     2},

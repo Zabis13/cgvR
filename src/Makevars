@@ -87,7 +87,7 @@ OBJECTS = $(CGVR_OBJECTS) $(DVZ_CORE_OBJECTS) $(DVZ_SCENE_OBJECTS) $(DVZ_IMGUI_O
 
 $(SHLIB): $(OBJECTS)
 
-datoviz/fpng.o: PKG_CXXFLAGS += -DFPNG_NO_SSE=1
+datoviz/fpng.o: PKG_CXXFLAGS +=  -msse4.1 -mpclmul
 b64/encode.o:   PKG_CFLAGS += -I$(DVZ_INC)/b64
 b64/buffer.o:   PKG_CFLAGS += -I$(DVZ_INC)/b64
 

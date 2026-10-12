@@ -1,8 +1,6 @@
-# cgvR 0.1.2.1
+# cgvR 0.1.3
 
-* e-mail update
-
----
+- `cgv_set_edge_colors()` — set per-edge RGBA colors (default: average of endpoint colors).
 
 # cgvR 0.1.2
 
