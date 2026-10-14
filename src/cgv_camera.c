@@ -108,6 +108,10 @@ SEXP C_cgv_camera_set(SEXP viewer, SEXP position, SEXP target, SEXP up) {
     dvz_camera_lookat(v->camera, tgt);
     dvz_camera_up(v->camera, upv);
 
+    /* Default far plane is 100: push it out so a scene of radius up to
+     * ~3 * dist around the target is not clipped. Near stays at default. */
+    dvz_camera_zrange(v->camera, 0.1f, fmaxf(100.0f, 4.0f * dist));
+
     dvz_panel_update(v->panel);
     dvz_app_submit(v->app);
 
